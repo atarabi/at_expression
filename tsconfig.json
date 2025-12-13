@@ -1,0 +1,18 @@
+{
+	"compilerOptions": {
+		"allowJs": true,
+		"target": "esnext",
+		"lib": [
+			"ESNext",
+		],
+		"jsx": "preserve",
+		"rootDir": "./src",
+		"outDir": "./dest",
+	},
+	"include": [
+		"./typings/ae.expression.d.ts",
+		"./typings/@expression.lib.d.ts",
+		"./src/**/*.tsx",
+		"./src/**/*.jsx",
+	],
+}
