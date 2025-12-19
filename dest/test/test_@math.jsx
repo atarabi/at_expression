@@ -1,4 +1,4 @@
-const { Vec2, Vec3, Mat3, Mat4 } = footage("@math.jsx").sourceData.load(true);
+const { Vec2, Vec3, Mat3, Mat4, Quaternion } = footage("@math.jsx").sourceData.load(true);
 const { Assert, Test } = footage("@test.jsx").sourceData.load();
 Test.describe("Vec2", () => {
     Test.test("construction", () => {
@@ -66,6 +66,12 @@ Test.describe("Vec2", () => {
             Assert.deepEqual(a.div(b).get(), [1 / 3, 0.5]);
         });
     });
+    Test.describe("rotate", () => {
+        Test.test("rotate 90degree", () => {
+            const v = new Vec2([1, 0]);
+            Assert.near(v.rotate(Math.PI / 2).get(), [0, 1]);
+        });
+    });
     Test.describe("map", () => {
         Test.test("map applies function per component", () => {
             const v = new Vec2([1, 2]);
@@ -78,6 +84,13 @@ Test.describe("Vec2", () => {
             const a = new Vec2([1, 2]);
             const b = new Vec2([3, 4]);
             Assert.equal(a.dot(b), 11);
+        });
+    });
+    Test.describe("cross", () => {
+        Test.test("cross product", () => {
+            const a = new Vec2([1, 2]);
+            const b = new Vec2([3, 4]);
+            Assert.equal(a.cross(b), -2);
         });
     });
     Test.describe("length", () => {
@@ -574,6 +587,67 @@ Test.describe("Mat4", () => {
             .mul(Mat4.rotateZ(d.rotate.z))
             .mul(Mat4.scale(d.scale.x, d.scale.y, d.scale.z));
         Assert.near(m.applyTo(new Vec3([1, 1, 1])).get(), r.applyTo(new Vec3([1, 1, 1])).get(), 1e-6);
+    });
+});
+Test.describe("Quaternion", () => {
+    Test.test("constructor and getters", () => {
+        const q = new Quaternion(1, 2, 3, 4);
+        Assert.equal(q.x, 1);
+        Assert.equal(q.y, 2);
+        Assert.equal(q.z, 3);
+        Assert.equal(q.w, 4);
+    });
+    Test.test("norm()", () => {
+        const q = new Quaternion(1, 2, 2, 1);
+        Assert.near(q.norm(), Math.sqrt(10), 1e-10);
+    });
+    Test.test("normalize()", () => {
+        const q = new Quaternion(1, 2, 3, 4);
+        const nq = q.normalize();
+        const n = Math.sqrt(nq.x * nq.x + nq.y * nq.y + nq.z * nq.z + nq.w * nq.w);
+        Assert.near(n, 1, 1e-10);
+    });
+    Test.test("conjugate()", () => {
+        const q = new Quaternion(1, 2, 3, 4);
+        const cq = q.conjugate();
+        Assert.equal(cq.x, -1);
+        Assert.equal(cq.y, -2);
+        Assert.equal(cq.z, -3);
+        Assert.equal(cq.w, 4);
+    });
+    Test.test("multiply()", () => {
+        const q1 = new Quaternion(1, 0, 0, 0);
+        const q2 = new Quaternion(0, 1, 0, 0);
+        const r = q1.multiply(q2);
+        Assert.deepEqual([r.x, r.y, r.z, r.w], [0, 0, 1, 0]);
+    });
+    Test.test("rotateVector()", () => {
+        const q = Quaternion.fromEuler(0, Math.PI / 2, 0); // Y軸90度回転
+        const v = new Vec3([1, 0, 0]);
+        const rotated = q.rotateVector(v);
+        Assert.near(rotated.x, 0, 1e-10);
+        Assert.near(rotated.y, 0, 1e-10);
+        Assert.near(rotated.z, 1, 1e-10);
+    });
+    Test.test("slerp()", () => {
+        const q1 = Quaternion.fromEuler(0, 0, 0);
+        const q2 = Quaternion.fromEuler(0, Math.PI, 0);
+        const mid = q1.slerp(q2, 0.5);
+        const euler = mid.toEuler();
+        Assert.near(euler.y, Math.PI / 2, 1e-10);
+    });
+    Test.test("fromEuler() and toEuler()", () => {
+        const angles = [Math.PI / 4, Math.PI / 3, Math.PI / 6];
+        const q = Quaternion.fromEuler(...angles);
+        const euler = q.toEuler();
+        Assert.near(euler.x, angles[0], 1e-10);
+        Assert.near(euler.y, angles[1], 1e-10);
+        Assert.near(euler.z, angles[2], 1e-10);
+    });
+    Test.test("isQuaternion()", () => {
+        const q = new Quaternion();
+        Assert.equal(Quaternion.isQuaternion(q), true);
+        Assert.equal(Quaternion.isQuaternion({}), false);
     });
 });
 Test.run();

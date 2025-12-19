@@ -41,6 +41,14 @@
                     return new Vec2([this.x / v.x, this.y / v.y]);
                 }
             }
+            rotate(angle: number): Vec2 {
+                const cos = Math.cos(angle);
+                const sin = Math.sin(angle);
+                return new Vec2([
+                    this.x * cos - this.y * sin,
+                    this.x * sin + this.y * cos
+                ]);
+            }
             map(fn: (v: number, index?: number) => number): Vec2 {
                 if (fn.length <= 1) {
                     return new Vec2([
@@ -57,6 +65,9 @@
             }
             dot(v: Vec2): number {
                 return this.x * v.x + this.y * v.y;
+            }
+            cross(v: Vec2): number {
+                return this.x * v.y - this.y * v.x;
             }
             len(): number {
                 return Math.hypot(this.x, this.y);
@@ -597,10 +608,6 @@
 
                 const translate = new Vec3([m[3], m[7], m[11]]);
 
-                const xAxis = new Vec3([m[0], m[1], m[2]]);
-                const yAxis = new Vec3([m[4], m[5], m[6]]);
-                const zAxis = new Vec3([m[8], m[9], m[10]]);
-
                 const sx = Math.hypot(m[0], m[4], m[8]);
                 const sy = Math.hypot(m[1], m[5], m[9]);
                 const sz = Math.hypot(m[2], m[6], m[10]);
@@ -723,11 +730,111 @@
             }
         }
 
+        class Quaternion implements Atarabi.math.Quaternion {
+            x: number;
+            y: number;
+            z: number;
+            w: number;
+            constructor(x = 0, y = 0, z = 0, w = 1) {
+                this.x = x;
+                this.y = y;
+                this.z = z;
+                this.w = w;
+            }
+            norm(): number {
+                return Math.sqrt(this.x * this.x + this.y * this.y + this.z * this.z + this.w * this.w);
+            }
+            normalize(): Quaternion {
+                const n = this.norm();
+                if (n === 0) return new Quaternion(0, 0, 0, 1);
+                return new Quaternion(this.x / n, this.y / n, this.z / n, this.w / n);
+            }
+            conjugate(): Quaternion {
+                return new Quaternion(-this.x, -this.y, -this.z, this.w);
+            }
+            multiply(q: Quaternion): Quaternion {
+                return new Quaternion(
+                    this.w * q.x + this.x * q.w + this.y * q.z - this.z * q.y,
+                    this.w * q.y - this.x * q.z + this.y * q.w + this.z * q.x,
+                    this.w * q.z + this.x * q.y - this.y * q.x + this.z * q.w,
+                    this.w * q.w - this.x * q.x - this.y * q.y - this.z * q.z
+                );
+            }
+            rotateVector(v: Vec3): Vec3 {
+                const qv = new Quaternion(v.x, v.y, v.z, 0);
+                const qr = this.multiply(qv).multiply(this.conjugate());
+                return new Vec3([qr.x, qr.y, qr.z]);
+            }
+            slerp(q2: Quaternion, t: number): Quaternion {
+                let dot = this.x * q2.x + this.y * q2.y + this.z * q2.z + this.w * q2.w;
+
+                if (dot < 0) {
+                    q2 = new Quaternion(-q2.x, -q2.y, -q2.z, -q2.w);
+                    dot = -dot;
+                }
+
+                if (dot > 0.9995) {
+                    const x = this.x + t * (q2.x - this.x);
+                    const y = this.y + t * (q2.y - this.y);
+                    const z = this.z + t * (q2.z - this.z);
+                    const w = this.w + t * (q2.w - this.w);
+                    return new Quaternion(x, y, z, w).normalize();
+                }
+
+                const theta0 = Math.acos(dot);
+                const theta = theta0 * t;
+                const sinTheta = Math.sin(theta);
+                const sinTheta0 = Math.sin(theta0);
+
+                const s0 = Math.cos(theta) - dot * sinTheta / sinTheta0;
+                const s1 = sinTheta / sinTheta0;
+
+                return new Quaternion(
+                    s0 * this.x + s1 * q2.x,
+                    s0 * this.y + s1 * q2.y,
+                    s0 * this.z + s1 * q2.z,
+                    s0 * this.w + s1 * q2.w
+                );
+            }
+            toEuler(): Vec3 {
+                const q = this.normalize();
+
+                const sinr_cosp = 2 * (q.w * q.x + q.y * q.z);
+                const cosr_cosp = 1 - 2 * (q.x * q.x + q.y * q.y);
+                const roll = Math.atan2(sinr_cosp, cosr_cosp);
+
+                const sinp = 2 * (q.w * q.y - q.z * q.x);
+                const pitch = Math.abs(sinp) >= 1?  Math.sign(sinp) * Math.PI / 2 : Math.asin(sinp);
+
+                const siny_cosp = 2 * (q.w * q.z + q.x * q.y);
+                const cosy_cosp = 1 - 2 * (q.y * q.y + q.z * q.z);
+                const yaw = Math.atan2(siny_cosp, cosy_cosp);
+
+                return new Vec3([roll, -pitch, yaw]);
+            }
+            static fromEuler(rx: number, ry: number, rz: number): Quaternion {
+                const cx = Math.cos(rx / 2), sx = Math.sin(rx / 2);
+                const cy = Math.cos(-ry / 2), sy = Math.sin(-ry / 2);
+                const cz = Math.cos(rz / 2), sz = Math.sin(rz / 2);
+
+                return new Quaternion(
+                    sx * cy * cz - cx * sy * sz,
+                    cx * sy * cz + sx * cy * sz,
+                    cx * cy * sz - sx * sy * cz,
+                    cx * cy * cz + sx * sy * sz
+                );
+            }
+            static isQuaternion(q: any): q is Quaternion {
+                return q instanceof Quaternion;
+            }
+        }
+
         const lib = {
             Vec2,
             Vec3,
             Mat3,
             Mat4,
+            Quaternion,
         };
 
         LIB.math = lib;

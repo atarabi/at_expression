@@ -2,6 +2,21 @@ interface Global {
     footage(name: "@math.jsx"): Footage<{
         load(force?: boolean): Atarabi.math.Lib;
     }>;
+    footage(name: "@IK.jsx"): Footage<{
+        load(force?: boolean): Atarabi.IK.Lib;
+    }>;
+    footage(name: "@test.jsx"): Footage<{
+        load(): Atarabi.test.Lib;
+    }>;
+}
+
+interface Layer {
+    footage(name: "@math.jsx"): Footage<{
+        load(force?: boolean): Atarabi.math.Lib;
+    }>;
+    footage(name: "@IK.jsx"): Footage<{
+        load(force?: boolean): Atarabi.IK.Lib;
+    }>;
     footage(name: "@test.jsx"): Footage<{
         load(): Atarabi.test.Lib;
     }>;
@@ -16,6 +31,7 @@ declare namespace Atarabi {
             Vec3: Vec3Constructor;
             Mat3: Mat3Constructor;
             Mat4: Mat4Constructor;
+            Quaternion: QuaternionConstructor;
         }
 
         interface Vec2 {
@@ -26,8 +42,10 @@ declare namespace Atarabi {
             sub(v: number | Vec2): Vec2;
             mul(v: number | Vec2): Vec2;
             div(v: number | Vec2): Vec2;
+            rotate(angle: number): Vec2;
             map(fn: (v: number, index?: number) => number): Vec2;
             dot(v: Vec2): number;
+            cross(v: Vec2): number;
             len(): number;
             norm(): Vec2;
             apply(m: Mat3): Vec2;
@@ -142,6 +160,55 @@ declare namespace Atarabi {
             fromTransform(pos: Vec3, anchor: Vec3, scale: Vec3, orientation: Vec3, rotation: Vec3): Mat4;
             fromLayerTransform(layer: Layer): Mat4;
             isMat4(m: any): m is Mat4;
+        }
+
+        interface Quaternion {
+            get x(): number;
+            get y(): number;
+            get z(): number;
+            get w(): number;
+            norm(): number;
+            normalize(): Quaternion;
+            conjugate(): Quaternion;
+            multiply(q: Quaternion): Quaternion;
+            rotateVector(v: Vec3): Vec3;
+            slerp(q: Quaternion, t: number): Quaternion;
+            toEuler(): Vec3;
+        }
+
+        interface QuaternionConstructor {
+            new(x?: number, y?: number, z?: number, w?: number): Quaternion;
+            fromEuler(rx: number, ry: number, rz: number): Quaternion;
+            isQuaternion(q: any): q is Quaternion;
+        }
+
+    }
+
+    namespace IK {
+
+        type Vec2 = math.Vec2;
+
+        interface Lib {
+            TwoBoneIK: TwoBoneIKConstructor;
+            FABRIK2D: FABRIK2DConstructor;
+        }
+
+        interface TwoBoneIK {
+            solve(target: Vec2): { elbow: Vec2; hand: Vec2 };
+        }
+
+        interface TwoBoneIKConstructor {
+            new(root: Vec2, mid: Vec2, tip: Vec2, pole?: Vec2): TwoBoneIK;
+        }
+
+        type AngleLimit = { min: number; max: number; };
+
+        interface FABRIK2D {
+            solve(target: Vec2, tolerance?: number, maxIterations?: number): Vec2[];
+        }
+
+        interface FABRIK2DConstructor {
+            new(points: Vec2[], angleLimits?: (AngleLimit | null)[]): FABRIK2D;
         }
 
     }
