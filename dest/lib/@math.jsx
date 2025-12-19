@@ -558,9 +558,9 @@
                 const xAxis = new Vec3([m[0], m[1], m[2]]);
                 const yAxis = new Vec3([m[4], m[5], m[6]]);
                 const zAxis = new Vec3([m[8], m[9], m[10]]);
-                const sx = xAxis.len();
-                const sy = yAxis.len();
-                const sz = zAxis.len();
+                const sx = Math.hypot(m[0], m[4], m[8]);
+                const sy = Math.hypot(m[1], m[5], m[9]);
+                const sz = Math.hypot(m[2], m[6], m[10]);
                 const scale = new Vec3([sx, sy, sz]);
                 if (sx === 0 || sy === 0 || sz === 0) {
                     return {
@@ -569,9 +569,9 @@
                         scale
                     };
                 }
-                const r00 = m[0] / sx, r01 = m[1] / sx, r02 = m[2] / sx;
-                const r10 = m[4] / sy, r11 = m[5] / sy, r12 = m[6] / sy;
-                const r20 = m[8] / sz, r21 = m[9] / sz, r22 = m[10] / sz;
+                const r00 = m[0] / sx, r01 = m[1] / sy, r02 = m[2] / sz;
+                const r10 = m[4] / sx, r11 = m[5] / sy, r12 = m[6] / sz;
+                const r20 = m[8] / sx, r21 = m[9] / sy, r22 = m[10] / sz;
                 let rx, ry, rz;
                 ry = Math.asin(r02);
                 if (Math.abs(Math.cos(ry)) > 1e-6) {
