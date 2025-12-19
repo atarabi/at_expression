@@ -5,6 +5,7 @@
 		"lib": [
 			"ESNext",
 		],
+		"isolatedModules": true,
 		"jsx": "preserve",
 		"rootDir": "./src",
 		"outDir": "./dest",

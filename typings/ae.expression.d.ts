@@ -1,6 +1,7 @@
 // for convenience
 type _Color = [red: number, green: number, blue: number];
 type _ColorA = [red: number, green: number, blue: number, alpha: number];
+type _Boolean = number;
 type _Vector2 = [x: number, y: number];
 type _Vector3 = [x: number, y: number, z: number];
 type _Vector = _Vector2 | _Vector3;
@@ -241,20 +242,20 @@ interface Layer {
  */
 declare class Camera extends Layer {
     active: boolean;
-    aperture: number;
-    blurLevel: number;
-    depthOfField: 0 | 1;
-    focusDistance: number;
-    highlightGain: number;
-    highlightSaturation: number;
-    highlightThreshold: number;
-    irisAspectRatio: number;
-    irisDiffractionFringe: number;
-    irisRotation: number;
-    irisRoundness: number;
-    irisShape: number;
-    pointOfInterest: _Vector3;
-    zoom: number;
+    aperture: Property<number>;
+    blurLevel: Property<number>;
+    depthOfField: Property<_Boolean>;
+    focusDistance: Property<number>;
+    highlightGain: Property<number>;
+    highlightSaturation: Property<number>;
+    highlightThreshold: Property<number>;
+    irisAspectRatio: Property<number>;
+    irisDiffractionFringe: Property<number>;
+    irisRotation: Property<number>;
+    irisRoundness: Property<number>;
+    irisShape: Property<number>;
+    pointOfInterest: Property<_Vector3>;
+    zoom: Property<number>;
     // unavailable
     override source: undefined;
     override effect: undefined;
@@ -272,17 +273,17 @@ declare class Camera extends Layer {
  * Light: https://ae-expressions.docsforadobe.dev/objects/light/
  */
 declare class Light extends Layer {
-    castsShadows: boolean;
-    color: _ColorA;
-    coneAngle: number;
-    coneFeather: number;
-    falloff: number;
-    falloffDistance: number;
-    intensity: number;
-    pointOfInterest: _Vector3;
-    radius: number;
-    shadowDarkness: number;
-    shadowDiffusion: number;
+    castsShadows: Property<_Boolean>;
+    color: Property<_ColorA>;
+    coneAngle: Property<number>;
+    coneFeather: Property<number>;
+    falloff: Property<number>;
+    falloffDistance: Property<number>;
+    intensity: Property<number>;
+    pointOfInterest: Property<_Vector3>;
+    radius: Property<number>;
+    shadowDarkness: Property<number>;
+    shadowDiffusion: Property<number>;
     // unavailable
     override source: undefined;
     override effect: undefined;
@@ -325,9 +326,9 @@ declare class Effect {
  */
 declare class Mask {
     invert: boolean;
-    maskExpansion: number;
-    maskFeather: number;
-    maskOpacity: number;
+    maskExpansion: Property<number>;
+    maskFeather: Property<number>;
+    maskOpacity: Property<number>;
     maskPath: PathProperty;
 }
 
@@ -480,28 +481,28 @@ declare class Layer {
     /*
      * Layer 3D: https://ae-expressions.docsforadobe.dev/layer/threed/
      */
-    acceptsLights: boolean;
-    acceptsShadows: boolean;
-    ambient: number;
-    castsShadows: boolean;
-    diffuse: number;
-    lightTransmission: number;
-    metal: number;
-    orientation: _Vector3;
-    rotationX: number;
-    rotationY: number;
-    rotationZ: number;
-    shininess: number;
-    specular: number;
+    acceptsLights: Property<_Boolean>;
+    acceptsShadows: Property<_Boolean>;
+    ambient: Property<number>;
+    castsShadows: Property<_Boolean>;
+    diffuse: Property<number>;
+    lightTransmission: Property<number>;
+    metal: Property<number>;
+    orientation: Property<_Vector3>;
+    rotationX: Property<number>;
+    rotationY: Property<number>;
+    rotationZ: Property<number>;
+    shininess: Property<number>;
+    specular: Property<number>;
 }
 
 interface Layer {
-    transform?: _TransformGroup;
-    geometryOption?: _GeometryOptionGroup;
-    materialOption?: _MaterialOptionGroup;
-    compositingOption?: _CompositingOptionGroup;
+    transform: _TransformGroup;
+    geometryOption: _GeometryOptionGroup;
+    materialOption: _MaterialOptionGroup;
+    compositingOption: _CompositingOptionGroup;
     materialAssignment: Group;
-    motionTracker?: Group;
+    motionTracker: Group;
 }
 
 declare class _TransformGroup extends Group {
@@ -523,37 +524,41 @@ declare class _GeometryOptionGroup extends Group {
 }
 
 interface _GeometryOptionGroup {
-    bevelStyle?: Property; // text, shape
-    bevelDepth?: Property; // text, shape
-    holeBevelDepth?: Property; // text, shape
-    extrusionDepth?: Property; // text, shape
-    curvature?: Property; // solid, av
-    segments?: Property; // solid, av
+    bevelStyle: Property<number>; // text, shape
+    bevelDepth: Property<number>; // text, shape
+    holeBevelDepth: Property<number>; // text, shape
+    extrusionDepth: Property<number>; // text, shape
+    curvature: Property<number>; // solid, av
+    segments: Property<number>; // solid, av
 }
 
 declare class _MaterialOptionGroup extends Group {
 }
 
 interface _MaterialOptionGroup {
-    castsShadows: Property;
-    acceptsShadows:Property;
-    acceptsLights: Property;
-    shadowColor: Property;
-    ambient: Property;
-    diffuse: Property;
-    specularIntensity: Property;
-    specularShininess: Property;
-    metal: Property;
+    castsShadows: Property<_Boolean>;
+    acceptsShadows:Property<_Boolean>;
+    acceptsLights: Property<_Boolean>;
+    appearsInReflections: Property<_Boolean>;
+    shadowColor: Property<_ColorA>;
+    ambient: Property<number>;
+    diffuse: Property<number>;
+    specularIntensity: Property<number>;
+    specularShininess: Property<number>;
+    metal: Property<number>;
+    reflectionIntensity: Property<number>;
+    reflectionSharpness: Property<number>;
+    reflectionRolloff: Property<number>;
 }
 
 declare class _CompositingOptionGroup extends Group {
 }
 
 interface _CompositingOptionGroup {
-    castsShadows: Property;
-    acceptsShadows: Property;
-    acceptsLight: Property;
-    shadowColor: Property;
+    castsShadows: Property<_Boolean>;
+    acceptsShadows: Property<_Boolean>;
+    acceptsLight: Property<_Boolean>;
+    shadowColor: Property<_ColorA>;
 }
 
 // Text
@@ -592,34 +597,34 @@ declare class _AnimatorPropertiesGroup extends Group {
 }
 
 interface _AnimatorPropertiesGroup {
-    anchorPoint?: Property;
-    position?: Property;
-    scale?: Property;
-    skew?: Property;
-    skewAxis?: Property;
-    zRotation?: Property;
-    rotation?: Property;
-    opacity?: Property;
-    fillOpacity?: Property;
-    strokeOpacity?: Property;
-    fillColor?: Property;
-    strokeColor?: Property;
-    fillHue?: Property;
-    strokeHue?: Property;
-    fillSaturation?: Property;
-    strokeSaturation?: Property;
-    fillBrightness?: Property;
-    strokeBrightness?: Property;
-    strokeWidth?: Property;
-    lineAnchor?: Property;
-    trackingType?: Property;
-    trackingAmount?: Property;
-    characterAlignment?: Property;
-    characterRange?: Property;
-    characterValue?: Property;
-    characterOffset?: Property;
-    lineSpacing?: Property;
-    blur?: Property;
+    anchorPoint?: Property<_Vector2>;
+    position?: Property<_Vector2>;
+    scale?: Property<_Vector2>;
+    skew?: Property<number>;
+    skewAxis?: Property<number>;
+    zRotation?: Property<number>;
+    rotation?: Property<number>;
+    opacity?: Property<number>;
+    fillOpacity?: Property<number>;
+    strokeOpacity?: Property<number>;
+    fillColor?: Property<_ColorA>;
+    strokeColor?: Property<_ColorA>;
+    fillHue?: Property<number>;
+    strokeHue?: Property<number>;
+    fillSaturation?: Property<number>;
+    strokeSaturation?: Property<number>;
+    fillBrightness?: Property<number>;
+    strokeBrightness?: Property<number>;
+    strokeWidth?: Property<number>;
+    lineAnchor?: Property<number>;
+    trackingType?: Property<number>;
+    trackingAmount?: Property<number>;
+    characterAlignment?: Property<number>;
+    characterRange?: Property<number>;
+    characterValue?: Property<number>;
+    characterOffset?: Property<number>;
+    lineSpacing?: Property<number>;
+    blur?: Property<number>;
 }
 
 declare class _SelectorsGroup extends Group {
