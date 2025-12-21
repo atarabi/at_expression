@@ -49,6 +49,16 @@ declare const comp: Global["comp"];
 declare const footage: Global["footage"];
 declare const posterizeTime: Global["posterizeTime"];
 
+interface Layer {
+    colorDepth: 8 | 16 | 32;
+    thisComp: Comp;
+    thisProject: Project;
+    time: number;
+    comp(name: string): Comp;
+    footage(name: string): Footage;
+    posterizeTime(updatesPerSecond: number): number;
+}
+
 /*
  * Time Conversion: https://ae-expressions.docsforadobe.dev/general/time-conversion/
  */
@@ -231,10 +241,6 @@ declare class Footage<Data = any> {
     dataKeyTimes(dataPath: number[], t0?: number, t1?: number): number[];
     dataKeyValues(dataPath: number[], t0?: number, t1?: number): any[];
     dataValue(dataPath: number[]): any;
-}
-
-interface Layer {
-    footage(name: string): Footage;
 }
 
 /*
