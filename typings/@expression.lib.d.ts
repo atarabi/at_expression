@@ -5,6 +5,9 @@ interface Global {
     footage(name: "@color.jsx"): Footage<{
         load(force?: boolean): Atarabi.color.Lib;
     }>;
+    footage(name: "@text.jsx"): Footage<{
+        load(force?: boolean): Atarabi.text.Lib;
+    }>;
     footage(name: "@IK.jsx"): Footage<{
         load(force?: boolean): Atarabi.IK.Lib;
     }>;
@@ -19,6 +22,9 @@ interface Layer {
     }>;
     footage(name: "@color.jsx"): Footage<{
         load(force?: boolean): Atarabi.color.Lib;
+    }>;
+    footage(name: "@text.jsx"): Footage<{
+        load(force?: boolean): Atarabi.text.Lib;
     }>;
     footage(name: "@IK.jsx"): Footage<{
         load(force?: boolean): Atarabi.IK.Lib;
@@ -281,7 +287,7 @@ declare namespace Atarabi {
 
         type OklabCh = 'l' | 'a' | 'b';
 
-        interface Oklab  extends ColorBase<OklabCh> {
+        interface Oklab extends ColorBase<OklabCh> {
             toOklch(): Oklch;
             toRGB(gamma?: number): RGB;
         }
@@ -304,10 +310,152 @@ declare namespace Atarabi {
             fromRGB(rgb: RGB, gamma?: number): Oklch;
         }
 
-        interface Blend {
-            normal(c1: RGB, c2: RGB, t?: number): RGB;
+    }
+
+    namespace text {
+
+        interface Lib {
+            CharClass: CharClassMap;
+            TextStyle: TextStyleRules;
         }
 
+        interface CharClassMap {
+            // --- East Asia ---
+            readonly Hiragana: "Hiragana";
+            readonly Katakana: "Katakana";
+            readonly Kanji: "Kanji"; // =Han
+            readonly Han: "Han";
+            readonly Hangul: "Hangul";
+
+            // --- Latin / European ---
+            readonly Latin: "Latin";
+            readonly Greek: "Greek";
+            readonly Cyrillic: "Cyrillic";
+
+            // --- Middle East / Caucasus ---
+            readonly Arabic: "Arabic";
+            readonly Hebrew: "Hebrew";
+            readonly Armenian: "Armenian";
+            readonly Georgian: "Georgian";
+
+            // --- South Asia ---
+            readonly Devanagari: "Devanagari";
+            readonly Bengali: "Bengali";
+            readonly Gurmukhi: "Gurmukhi";
+            readonly Gujarati: "Gujarati";
+            readonly Oriya: "Oriya";
+            readonly Tamil: "Tamil";
+            readonly Telugu: "Telugu";
+            readonly Kannada: "Kannada";
+            readonly Malayalam: "Malayalam";
+            readonly Sinhala: "Sinhala";
+
+            // --- Southeast Asia ---
+            readonly Thai: "Thai";
+            readonly Lao: "Lao";
+            readonly Khmer: "Khmer";
+            readonly Myanmar: "Myanmar";
+
+            // --- African ---
+            readonly Ethiopic: "Ethiopic";
+
+            // --- Other ---
+            readonly Lowercase: "Lowercase";
+            readonly Uppercase: "Uppercase";
+            readonly Modifier: "Modifier",
+            readonly Alphabetic: "Alphabetic";
+            readonly Letter: "Letter";
+            readonly Decimal: "Decimal";
+            readonly Number: "Number";
+            readonly Emoji: "Emoji";
+            readonly Symbol: "Symbol";
+            readonly Punctuation: "Punctuation";
+            readonly Symbols: "Symbols"; // Symbol + Panctuation
+            readonly Yakumono: "Yakumono";
+            readonly Space: "Space";
+            readonly Separator: "Separator";
+        }
+
+        type CharClass = CharClassMap[keyof CharClassMap];
+
+        type CharMatcher = CharClass | RegExp;
+
+        type TextLayoutKeys = "direction" | "firstLineIndent" | "isEveryLineComposer" | "isHangingRoman" | "justification" | "leadingType" | "leftMargin" | "rightMargin" | "spaceAfter" | "spaceBefore";
+
+        type TextLayout = Pick<Fields<TextStyleProperty>, TextLayoutKeys>;
+
+        type TextLayoutOptions = Partial<TextLayout>;
+
+        type TextStyle = Omit<
+            Fields<TextStyleProperty>,
+            keyof Fields<Property> | TextLayoutKeys
+        >;
+
+        type TextStyleOptions = Partial<TextStyle>;
+
+        interface TextStyleBuilder<Rule> {
+            rule(style: TextStyleOptions): this;
+            rule(rule: Rule, style: TextStyleOptions): this;
+            layout(layout?: TextLayoutOptions): this;
+            apply(property?: TextProperty, style?: TextStyleProperty): TextStyleProperty;
+        }
+
+        type CharClassRule = CharMatcher | CharMatcher[];
+
+        interface CharClassTextStyleBuilder extends TextStyleBuilder<CharClassRule> {
+            exclusive(): this;
+            overlay(): this;
+        }
+
+        type Range = { from: number; count?: number };
+
+        type PositionRule = Range;
+
+        interface PositionTextStyleBuilder extends TextStyleBuilder<PositionRule> {
+        }
+
+        type RangeRule = Range | number | ((index: number) => boolean);
+
+        type LineRule = RangeRule;
+
+        interface LineTextStyleBuilder extends TextStyleBuilder<LineRule> {
+        }
+
+        type SurroundingRule = RangeRule;
+
+        type SurroundingTarget = "all" | "content" | "delimiter" | "open" | "close"; // default: "content"
+
+        type SurroundingNesting = "none" | "balanced"; // default: "balanced"
+
+        type SurroundingDepth = number | ((depth: number) => boolean);
+
+        type SurroundingOptions = { target?: SurroundingTarget; nesting?: SurroundingNesting; depth?: SurroundingDepth; };
+
+        interface SurroundingTextStyleBuilder extends TextStyleBuilder<SurroundingRule> {
+        }
+
+        interface TextStyleComposer {
+            add<Rule>(builder: TextStyleBuilder<Rule>): this;
+            layout(layout: TextLayoutOptions): this;
+            apply(property?: TextProperty, style?: TextStyleProperty): TextStyleProperty;
+        }
+
+        interface TextStyleRules {
+            byCharClass(): CharClassTextStyleBuilder;
+            byPosition(): PositionTextStyleBuilder;
+            byLine(): LineTextStyleBuilder;
+            bySurrounding(open: string, close: string, options?: SurroundingOptions): SurroundingTextStyleBuilder;
+            compose(): TextStyleComposer;
+        }
+
+        /** @internal */
+        interface Lib {
+            __internal: {
+                annotateByCharClass: typeof annotateByCharClass;
+            };
+        }
+
+        function annotateByCharClass(text: string, charClasses: (CharMatcher | CharMatcher[])[]): { from: number; count?: number; index: number; }[];
     }
 
     namespace IK {
@@ -362,5 +510,14 @@ declare namespace Atarabi {
         }
 
     }
+
+    /**
+     * Utility
+     */
+    type NonFunctionKeys<T> = {
+        [K in keyof T]: T[K] extends Function ? never : K
+    }[keyof T];
+
+    type Fields<T> = Pick<T, NonFunctionKeys<T>>;
 
 }

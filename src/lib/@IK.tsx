@@ -152,7 +152,7 @@
         const lib = {
             TwoBoneIK,
             FABRIK2D,
-        };
+        } satisfies Atarabi.IK.Lib;
 
         LIB.IK = lib;
 

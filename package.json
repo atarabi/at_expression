@@ -1,4 +1,5 @@
 {
+  "type": "module",
   "scripts": {
     "build": "node tool/clean.js & tsc & node tool/postprocess.js"
   }

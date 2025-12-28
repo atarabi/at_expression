@@ -368,6 +368,28 @@ declare class Property<Value extends _PropertyValue = _PropertyValue> {
 
 type _LoopType = "cycle" | "pingpong" | "offset" | "continue";
 
+// with
+declare const name: Property["name"] ;
+declare const numKeys: Property["numKeys"];
+declare const propertyIndex: Property["propertyIndex"];
+declare const speed: Property["speed"];
+declare const velocity: Property["velocity"];
+declare const key: Property["key"];
+declare const loopIn: Property["loopIn"];
+declare const loopInDuration: Property["loopInDuration"];
+declare const loopOut: Property["loopOut"];
+declare const loopOutDuration: Property["loopOutDuration"];
+declare const nearestKey: Property["nearestKey"];
+declare const nextKey: Property["nextKey"];
+declare const previousKey: Property["previousKey"];
+declare const propertyGroup: Property["propertyGroup"];
+declare const smooth: Property["smooth"];
+declare const speedAtTime: Property["speedAtTime"];
+declare const temporalWiggle: Property["temporalWiggle"];
+declare const valueAtTime: Property["valueAtTime"];
+declare const velocityAtTime: Property["velocityAtTime"];
+declare const wiggle: Property["wiggle"];
+
 /*
  * Dropdown Menus: https://ae-expressions.docsforadobe.dev/objects/dropdown/
  */
@@ -502,6 +524,56 @@ declare class Layer {
     specular: Property<number>;
 }
 
+//with
+declare const source: Layer["source"];
+declare const sourceRectAtTime: Layer["sourceRectAtTime"];
+declare const sourceTime: Layer["sourceTime"];
+declare const active: Layer["active"];
+declare const audioActive: Layer["audioActive"];
+declare const enabled: Layer["enabled"];
+declare const hasAudio: Layer["hasAudio"];
+declare const hasParent: Layer["hasParent"];
+declare const hasVideo: Layer["hasVideo"];
+declare const height: Layer["height"];
+declare const index: Layer["index"];
+declare const inPoint: Layer["inPoint"];
+declare const outPoint: Layer["outPoint"];
+declare const parent: Layer["parent"];
+declare const startTime: Layer["startTime"];
+declare const width: Layer["width"];
+declare const sampleImage: Layer["sampleImage"];
+declare const anchorPoint: Layer["anchorPoint"];
+declare const audioLevels: Layer["audioLevels"];
+declare const marker: Layer["marker"];
+declare const opacity: Layer["opacity"];
+declare const position: Layer["position"];
+declare const rotation: Layer["rotation"];
+declare const scale: Layer["scale"];
+declare const timeRemap: Layer["timeRemap"];
+declare const toComp: Layer["toComp"];
+declare const fromComp: Layer["fromComp"];
+declare const toWorld: Layer["toWorld"];
+declare const fromWorld: Layer["fromWorld"];
+declare const toCompVec: Layer["toCompVec"];
+declare const fromCompVec: Layer["fromCompVec"];
+declare const toWorldVec: Layer["toWorldVec"];
+declare const fromWorldVec: Layer["fromWorldVec"];
+declare const fromCompToSurface: Layer["fromCompToSurface"];
+declare const acceptsLights: Layer["acceptsLights"];
+declare const acceptsShadows: Layer["acceptsShadows"];
+declare const ambient: Layer["ambient"];
+declare const castsShadows: Layer["castsShadows"];
+declare const diffuse: Layer["diffuse"];
+declare const lightTransmission: Layer["lightTransmission"];
+declare const metal: Layer["metal"];
+declare const orientation: Layer["orientation"];
+declare const rotationX: Layer["rotationX"];
+declare const rotationY: Layer["rotationY"];
+declare const rotationZ: Layer["rotationZ"];
+declare const shininess: Layer["shininess"];
+declare const specular: Layer["specular"];
+
+
 interface Layer {
     transform: _TransformGroup;
     geometryOption: _GeometryOptionGroup;
@@ -575,6 +647,10 @@ interface Layer {
     text?: _TextGroup;
 }
 
+// with
+declare const text: Layer["text"];
+
+
 declare class _TextGroup extends Group {
 }
 
@@ -640,6 +716,7 @@ declare class _SelectorsGroup extends Group {
  * Source Text: https://ae-expressions.docsforadobe.dev/text/sourcetext/
  */
 declare class TextProperty extends Property {
+    value: string;
     isHorizontalText: boolean;
     isParagraphText: boolean;
     isPointText: boolean;
@@ -740,11 +817,11 @@ type _LineJoin = "bevel" | "miter" | "round";
  * Variable Fonts: https://ae-expressions.docsforadobe.dev/text/variable-fonts/
  */
 interface _AnimatorPropertiesGroup {
-    fontAxisWght?: Property;
-    fontAxisWdth?: Property;
-    fontAxisSlnt?: Property;
-    fontAxisItal?: Property;
-    fontAxisOpsz?: Property;
+    fontAxisWght?: Property<number>;
+    fontAxisWdth?: Property<number>;
+    fontAxisSlnt?: Property<number>;
+    fontAxisItal?: Property<number>;
+    fontAxisOpsz?: Property<number>;
 }
 
 /*

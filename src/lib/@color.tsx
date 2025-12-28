@@ -610,7 +610,7 @@
             HSB,
             Oklab,
             Oklch,
-        };
+        } satisfies Atarabi.color.Lib;
 
         LIB.color = lib;
 

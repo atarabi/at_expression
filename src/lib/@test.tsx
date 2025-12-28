@@ -92,7 +92,7 @@
                 assertNoCycle(b, new WeakSet(), "b");
 
                 if (!deepEqualImpl(a, b, "")) {
-                    throw new Error(msg || "deepEqual failed");
+                    throw new Error(msg || `deepEqual failed (left=${JSON.stringify(a)}, right=${JSON.stringify(b)})`);
                 }
             },
             near(a, b, eps = 1e-6, msg) {
@@ -186,7 +186,7 @@
         const lib = {
             Assert,
             Test,
-        };
+        } satisfies Atarabi.test.Lib;
 
         return lib;
 

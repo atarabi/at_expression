@@ -835,7 +835,7 @@
             Mat3,
             Mat4,
             Quaternion,
-        };
+        } satisfies Atarabi.math.Lib;
 
         LIB.math = lib;
 
