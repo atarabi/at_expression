@@ -9,45 +9,45 @@
         type CharClass = Atarabi.text.CharClass;
 
         const REGEX_BY_CLASS: Record<CharClass, RegExp | RegExp[]> = (() => {
-            const Hiragana = /\p{Script=Hiragana}+/u;
-            const Katakana = /\p{Script=Katakana}+/u;
-            const Han = /\p{Script=Han}+/u;
-            const Hangul = /\p{Script=Hangul}+/u;
-            const Latin = /\p{Script=Latin}+/u;
-            const Greek = /\p{Script=Greek}+/u;
-            const Cyrillic = /\p{Script=Cyrillic}+/u;
-            const Arabic = /\p{Script=Arabic}+/u;
-            const Hebrew = /\p{Script=Hebrew}+/u;
-            const Armenian = /\p{Script=Armenian}+/u;
-            const Georgian = /\p{Script=Georgian}+/u;
-            const Devanagari = /\p{Script=Devanagari}+/u;
-            const Bengali = /\p{Script=Bengali}+/u;
-            const Gurmukhi = /\p{Script=Gurmukhi}+/u;
-            const Gujarati = /\p{Script=Gujarati}+/u;
-            const Oriya = /\p{Script=Oriya}+/u;
-            const Tamil = /\p{Script=Tamil}+/u;
-            const Telugu = /\p{Script=Telugu}+/u;
-            const Kannada = /\p{Script=Kannada}+/u;
-            const Malayalam = /\p{Script=Malayalam}+/u;
-            const Sinhala = /\p{Script=Sinhala}+/u;
-            const Thai = /\p{Script=Thai}+/u;
-            const Lao = /\p{Script=Lao}+/u;
-            const Khmer = /\p{Script=Khmer}+/u;
-            const Myanmar = /\p{Script=Myanmar}+/u;
-            const Ethiopic = /\p{Script=Ethiopic}+/u;
-            const Lowercase = /\p{Lowercase_Letter}+/u;
-            const Uppercase = /\p{Uppercase_Letter}+/u;
-            const Modifier = /\p{Modifier_Letter}+/u;
-            const Alphabetic = /\p{Alphabetic}+/u;
-            const Letter = /\p{Letter}+/u;
-            const Decimal = /\p{Decimal_Number}+/u;
-            const Number = /\p{Number}+/u;
-            const Emoji = /\p{Extended_Pictographic}+/u;
-            const Symbol = /\p{Symbol}+/u;
-            const Punctuation = /\p{Punctuation}+/u;
-            const Yakumono = /[、。，．・：；？！…―ー〜～「」『』（）［］｛｝〈〉《》【】]+/;
-            const Space = /\p{Space_Separator}+/u;
-            const Separator = /\p{Separator}+/u;
+            const Hiragana = /\p{Script=Hiragana}/u;
+            const Katakana = /\p{Script=Katakana}/u;
+            const Han = /\p{Script=Han}/u;
+            const Hangul = /\p{Script=Hangul}/u;
+            const Latin = /\p{Script=Latin}/u;
+            const Greek = /\p{Script=Greek}/u;
+            const Cyrillic = /\p{Script=Cyrillic}/u;
+            const Arabic = /\p{Script=Arabic}/u;
+            const Hebrew = /\p{Script=Hebrew}/u;
+            const Armenian = /\p{Script=Armenian}/u;
+            const Georgian = /\p{Script=Georgian}/u;
+            const Devanagari = /\p{Script=Devanagari}/u;
+            const Bengali = /\p{Script=Bengali}/u;
+            const Gurmukhi = /\p{Script=Gurmukhi}/u;
+            const Gujarati = /\p{Script=Gujarati}/u;
+            const Oriya = /\p{Script=Oriya}/u;
+            const Tamil = /\p{Script=Tamil}/u;
+            const Telugu = /\p{Script=Telugu}/u;
+            const Kannada = /\p{Script=Kannada}/u;
+            const Malayalam = /\p{Script=Malayalam}/u;
+            const Sinhala = /\p{Script=Sinhala}/u;
+            const Thai = /\p{Script=Thai}/u;
+            const Lao = /\p{Script=Lao}/u;
+            const Khmer = /\p{Script=Khmer}/u;
+            const Myanmar = /\p{Script=Myanmar}/u;
+            const Ethiopic = /\p{Script=Ethiopic}/u;
+            const Lowercase = /\p{Lowercase_Letter}/u;
+            const Uppercase = /\p{Uppercase_Letter}/u;
+            const Modifier = /\p{Modifier_Letter}/u;
+            const Alphabetic = /\p{Alphabetic}/u;
+            const Letter = /\p{Letter}/u;
+            const Decimal = /\p{Decimal_Number}/u;
+            const Number = /\p{Number}/u;
+            const Emoji = /\p{Extended_Pictographic}/u;
+            const Symbol = /\p{Symbol}/u;
+            const Punctuation = /\p{Punctuation}/u;
+            const Yakumono = /[、。，．・：；？！…―ー〜～「」『』（）［］｛｝〈〉《》【】]/;
+            const Space = /\p{Space_Separator}/u;
+            const Separator = /\p{Separator}/u;
 
             return {
                 Hiragana,
@@ -286,13 +286,13 @@
         }
 
         function applyTextLayout(style: TextStyleProperty, layout: TextLayoutOptions): TextStyleProperty {
-            for (const field in layout ) {
+            for (const field in layout) {
                 style = applyTextLayoutField(style, field as keyof TextLayout, layout[field]);
             }
             return style;
         }
 
-        function applyStyle<Field extends keyof TextStyle>(style: TextStyleProperty, field: Field, value: TextStyle[Field], startIndex: number, numOfCharacters: number): TextStyleProperty {
+        function applyStyleField<Field extends keyof TextStyle>(style: TextStyleProperty, field: Field, value: TextStyle[Field], startIndex: number, numOfCharacters: number): TextStyleProperty {
             switch (field) {
                 case "applyFill":
                     for (let n = 0; n < numOfCharacters; n++) {
@@ -423,6 +423,13 @@
             throw new Error(`Invalid field: ${field}`);
         }
 
+        function applyStyle(style: TextStyleProperty, options: TextStyleOptions, startIndex: number, numOfCharacters: number): TextStyleProperty {
+            for (const field in options) {
+                style = applyStyleField(style, field as keyof TextStyle, options[field], startIndex, numOfCharacters);
+            }
+            return style;
+        }
+
         function isStyleOnly<Rule>(a: Rule | TextStyleOptions, b?: TextStyleOptions): a is TextStyleOptions {
             return b === undefined;
         }
@@ -439,7 +446,7 @@
             }
             protected abstract addRule(rule: Rule, options: TextStyleOptions): this;
             layout(layout: TextLayoutOptions): this {
-                this.layoutOptions = {...this.layoutOptions, ...layout};
+                this.layoutOptions = { ...this.layoutOptions, ...layout };
                 return this;
             }
             protected applyLayout(style: TextStyleProperty): TextStyleProperty {
@@ -453,16 +460,16 @@
         class CharClassTextStyleBuilder extends TextStyleBuilder<CharClassRule> implements Atarabi.text.CharClassTextStyleBuilder {
             protected charClasses: CharClassRule[] = [];
             protected styles: TextStyleOptions[] = [];
-            protected excluseive: boolean = false;
+            protected doExclusive: boolean = false;
             protected get defaultRule(): CharClassRule {
                 return /[\s\S]+/;
             }
             exclusive(): this {
-                this.excluseive = true;
+                this.doExclusive = true;
                 return this;
             }
             overlay(): this {
-                this.excluseive = false;
+                this.doExclusive = false;
                 return this;
             }
             protected addRule(rule: CharClassRule, style: TextStyleOptions): this {
@@ -472,7 +479,7 @@
             }
             apply(property: TextProperty = thisLayer.text.sourceText, style: TextStyleProperty = property.style): TextStyleProperty {
                 style = this.applyLayout(style);
-                if (this.excluseive) {
+                if (this.doExclusive) {
                     const ranges = annotateByCharClassExclusive(property.value, this.charClasses);
                     for (const range of ranges) {
                         if (range.index < 0) {
@@ -480,9 +487,7 @@
                         }
                         const startIndex = range.from;
                         const numOfCharacters = range.count;
-                        for (const field in this.styles[range.index]) {
-                            style = applyStyle(style, field as keyof TextStyle, this.styles[range.index][field], startIndex, numOfCharacters);
-                        }
+                        style = applyStyle(style, this.styles[range.index], startIndex, numOfCharacters);
                     }
                 } else {
                     for (let i = 0; i < this.charClasses.length; i++) {
@@ -490,9 +495,7 @@
                         for (const range of ranges) {
                             const startIndex = range.from;
                             const numOfCharacters = range.count;
-                            for (const field in this.styles[i]) {
-                                style = applyStyle(style, field as keyof TextStyle, this.styles[i][field], startIndex, numOfCharacters);
-                            }
+                            style = applyStyle(style, this.styles[i], startIndex, numOfCharacters);
                         }
                     }
                 }
@@ -503,7 +506,7 @@
         type Range = Atarabi.text.Range;
         type PositionRule = Atarabi.text.PositionRule;
 
-        function convertGraphemeRangesToUtf16(text: string, ranges: Range[]): Range[] {
+        function convertGraphemeRangesForText(text: string, rules: PositionRule[], line: number = 0): Range[][] {
             const segmenter = new Intl.Segmenter(undefined, { granularity: "grapheme" });
             const graphemes = [...segmenter.segment(text)];
             const utf16Offsets: number[] = [];
@@ -514,37 +517,91 @@
             }
             utf16Offsets.push(offset);
 
-            return ranges.map(r => {
-                const fromG = r.from;
-                const toG = r.count != null ? Math.min(r.from + r.count, graphemes.length) : graphemes.length;
-                const fromUtf16 = utf16Offsets[fromG];
-                const toUtf16 = utf16Offsets[toG];
-                return {
-                    from: fromUtf16,
-                    count: toUtf16 - fromUtf16,
-                };
-            });
+            const result: Range[][] = [];
+
+            for (const rule of rules) {
+                let range: Range[] = [];
+
+                if (typeof rule === "number") {
+                    if (rule < graphemes.length) {
+                        const fromUtf16 = utf16Offsets[rule];
+                        const toUtf16 = utf16Offsets[rule + 1];
+                        range.push({ from: fromUtf16, count: toUtf16 - fromUtf16 });
+                    }
+                } else if (typeof rule === "function") {
+                    for (let i = 0; i < graphemes.length; i++) {
+                        if (rule(i, line)) {
+                            const fromUtf16 = utf16Offsets[i];
+                            const toUtf16 = utf16Offsets[i + 1];
+                            range.push({ from: fromUtf16, count: toUtf16 - fromUtf16 });
+                        }
+                    }
+                    range = mergeRanges(range);
+                } else {
+                    const start = rule.from;
+                    const end = rule.count != null ? Math.min(start + rule.count, graphemes.length) : graphemes.length;
+                    const fromUtf16 = utf16Offsets[start];
+                    const toUtf16 = utf16Offsets[end];
+                    range.push({ from: fromUtf16, count: toUtf16 - fromUtf16 });
+                }
+                result.push(range);
+            }
+
+            return result;
+        }
+
+        function convertGraphemeRangesByLine(text: string, rules: PositionRule[]): Range[][] {
+            const lineRanges = annotateByLine(text);
+            const result: Range[][] = rules.map(() => []);
+            for (let i = 0; i < lineRanges.length; i++) {
+                const line = lineRanges[i];
+                const lineText = text.slice(line.from, line.from + line.count);
+                const perLine = convertGraphemeRangesForText(lineText, rules, i);
+                for (let i = 0; i < perLine.length; i++) {
+                    for (const r of perLine[i]) {
+                        result[i].push({
+                            from: line.from + r.from,
+                            count: r.count,
+                        });
+                    }
+                }
+            }
+
+            for (let i = 0; i < result.length; i++) {
+                result[i] = mergeRanges(result[i]);
+            }
+
+            return result;
         }
 
         class PositionTextStyleBuilder extends TextStyleBuilder<PositionRule> implements Atarabi.text.PositionTextStyleBuilder {
-            protected ranges: Range[] = [];
+            protected rules: PositionRule[] = [];
             protected styles: TextStyleOptions[] = [];
+            protected doLine: boolean = false;
             protected get defaultRule(): PositionRule {
                 return { from: 0 };
             }
+            line(): this {
+                this.doLine = true;
+                return this;
+            }
+            global(): this {
+                this.doLine = false;
+                return this;
+            }
             protected addRule(rule: PositionRule, style: TextStyleOptions): this {
-                this.ranges.push(rule);
+                this.rules.push(rule);
                 this.styles.push(style);
                 return this;
             }
             apply(property: TextProperty = thisLayer.text.sourceText, style: TextStyleProperty = property.style): TextStyleProperty {
                 style = this.applyLayout(style);
-                const ranges = convertGraphemeRangesToUtf16(property.value, this.ranges);
-                for (let i = 0; i < ranges.length; i++) {
-                    const startIndex = ranges[i].from;
-                    const numOfCharacters = ranges[i].count;
-                    for (const field in this.styles[i]) {
-                        style = applyStyle(style, field as keyof TextStyle, this.styles[i][field], startIndex, numOfCharacters);
+                const rangesList = this.doLine ? convertGraphemeRangesByLine(property.value, this.rules) : convertGraphemeRangesForText(property.value, this.rules);
+                for (let i = 0; i < rangesList.length; i++) {
+                    for (const range of rangesList[i]) {
+                        const startIndex = range.from;
+                        const numOfCharacters = range.count;
+                        style = applyStyle(style, this.styles[i], startIndex, numOfCharacters);
                     }
                 }
                 return style;
@@ -619,9 +676,7 @@
                     for (const range of ranges) {
                         const startIndex = range.from;
                         const numOfCharacters = range.count;
-                        for (const field in this.styles[i]) {
-                            style = applyStyle(style, field as keyof TextStyle, this.styles[i][field], startIndex, numOfCharacters);
-                        }
+                        style = applyStyle(style, this.styles[i], startIndex, numOfCharacters);
                     }
                 }
                 return style;
@@ -640,7 +695,6 @@
 
         function findNoneNested(text: string, open: string, close: string): SurroundingMatch[] {
             const matches: SurroundingMatch[] = [];
-            let depth = 0;
 
             for (let i = 0; i < text.length;) {
                 if (text.startsWith(open, i)) {
@@ -758,24 +812,218 @@
                         const startIndex = range.from;
                         const numOfCharacters = range.count;
                         if (numOfCharacters <= 0) continue;
-                        for (const field in this.styles[i]) {
-                            style = applyStyle(style, field as keyof TextStyle, this.styles[i][field], startIndex, numOfCharacters);
-                        }
+                        style = applyStyle(style, this.styles[i], startIndex, numOfCharacters);
                     }
                 }
                 return style;
             }
         }
 
+        type Mutable<T> = { -readonly [K in keyof T]: T[K]; };
+
+        type GraphemeRule = Atarabi.text.GraphemeRule;
+        type GraphemeMatcher = Atarabi.text.GraphemeMatcher;
+        type GraphemeStateFn = Atarabi.text.GraphemeStateFn;
+        type GraphemeRuleItem = { match: GraphemeMatcher; initState: GraphemeStateFn; };
+        type GraphemeContext = Atarabi.text.GraphemeContext;
+
+        function isLineBreakGrapheme(g: string): boolean {
+            return g === "\n" || g === "\r" || g === "\r\n";
+        }
+
+        function segmentText(text: string): { graphemes: Intl.SegmentData[]; lineOf: number[]; indexInLineOf: number[]; lineLengthOf: number[]; totalLines: number; } {
+            const segmenter = new Intl.Segmenter(undefined, { granularity: "grapheme" });
+            const graphemes = [...segmenter.segment(text)];
+
+            const lineOf: number[] = [];
+            const indexInLineOf: number[] = [];
+            const lineLengthOf: number[] = [];
+
+            let line = 0;
+            let indexInLine = 0;
+            let lineStart = 0;
+
+            graphemes.forEach((seg, i) => {
+                lineOf[i] = line;
+                indexInLineOf[i] = indexInLine;
+
+                indexInLine++;
+
+                if (isLineBreakGrapheme(seg.segment)) {
+                    const len = i - lineStart + 1;
+                    for (let j = lineStart; j <= i; j++) {
+                        lineLengthOf[j] = len;
+                    }
+                    line++;
+                    indexInLine = 0;
+                    lineStart = i + 1;
+                }
+            });
+
+            const lastLen = graphemes.length - lineStart;
+            for (let j = lineStart; j < graphemes.length; j++) {
+                lineLengthOf[j] = lastLen;
+            }
+
+            return {
+                graphemes,
+                lineOf,
+                indexInLineOf,
+                lineLengthOf,
+                totalLines: line,
+            };
+        }
+
+        function processGrapheme(text: string, rules: GraphemeRuleItem[], iteration: number): Range[][] {
+            const { graphemes, lineOf, indexInLineOf, lineLengthOf, totalLines } = segmentText(text);
+
+            const results: Range[][] = rules.map(() => []);
+            const contexts: Mutable<GraphemeContext>[] = rules.map(rule => ({
+                index: 0,
+                line: 0,
+                indexInLine: 0,
+                lineLength: 0,
+                totalLines: 0,
+                iteration: 0,
+                state: rule.initState(),
+            }));
+
+            for (let iter = 0; iter < iteration; iter++) {
+                graphemes.forEach((seg, globalIndex) => {
+                    const g = seg.segment;
+                    const from = seg.index;
+                    const count = g.length;
+
+                    rules.forEach((rule, i) => {
+                        const ctx = contexts[i];
+                        ctx.index = globalIndex;
+                        ctx.line = lineOf[globalIndex];
+                        ctx.indexInLine = indexInLineOf[globalIndex];
+                        ctx.lineLength = lineLengthOf[globalIndex];
+                        ctx.totalLines = totalLines;
+                        ctx.iteration = iter;
+
+                        if (iter === iteration - 1 && rule.match(g, ctx)) {
+                            results[i].push({ from, count });
+                        }
+                    });
+                });
+            }
+
+            return results.map(mergeRanges);
+        }
+
+        class GraphemeTextStyleBuilder extends TextStyleBuilder<GraphemeRule> implements Atarabi.text.GraphemeTextStyleBuilder {
+            protected rules: GraphemeRuleItem[] = [];
+            protected styles: TextStyleOptions[] = [];
+            protected iteration: number = 1;
+            protected get defaultRule(): GraphemeRule {
+                return () => true;
+            }
+            iterations(iter: number): this {
+                this.iteration = Math.max(1, iter);
+                return this;
+            }
+            protected addRule(rule: GraphemeRule, style: TextStyleOptions): this {
+                if (typeof rule === "function") {
+                    this.rules.push({ match: rule, initState: () => ({}) });
+                } else {
+                    this.rules.push(rule);
+                }
+                this.styles.push(style);
+                return this;
+            }
+            apply(property: TextProperty = thisLayer.text.sourceText, style: TextStyleProperty = property.style): TextStyleProperty {
+                style = this.applyLayout(style);
+                const rangesList = processGrapheme(property.value, this.rules, this.iteration);
+                for (let i = 0; i < this.rules.length; i++) {
+                    const ranges = rangesList[i];
+                    for (const range of ranges) {
+                        const startIndex = range.from;
+                        const numOfCharacters = range.count;
+                        style = applyStyle(style, this.styles[i], startIndex, numOfCharacters);
+                    }
+                }
+                return style;
+            }
+        }
+
+        type ForEachLineFunc = Atarabi.text.ForEachLineFunc;
+
+        class ForEachLine implements Atarabi.text.TextStyleApplier {
+            constructor(public fn: ForEachLineFunc) {
+            }
+            apply(property: TextProperty = thisLayer.text.sourceText, style: TextStyleProperty = property.style): TextStyleProperty {
+                const text = property.value;
+                const lines = annotateByLine(text);
+                const fn = this.fn;
+                for (let i = 0; i < lines.length; i++) {
+                    const line = lines[i];
+                    const result = fn(text.slice(line.from, line.from + line.count), i, lines.length);
+                    if (result) {
+                        style = applyStyle(style, result, line.from, line.count);
+                    }
+                }
+                return style;
+            }
+        }
+
+        type ForEachGraphemeFunc = Atarabi.text.ForEachGraphemeFunc;
+        type ForEachGraphemeOptions = Atarabi.text.ForEachGraphemeOptions;
+
+        class ForEachGrapheme implements Atarabi.text.TextStyleApplier {
+            protected options: ForEachGraphemeOptions;
+            constructor(public fn: ForEachGraphemeFunc, options?: ForEachGraphemeOptions) {
+                this.options = { ...{ iterations: 1, initState: () => ({}) }, ...options };
+            }
+            apply(property: TextProperty = thisLayer.text.sourceText, style: TextStyleProperty = property.style): TextStyleProperty {
+                const { graphemes, lineOf, indexInLineOf, lineLengthOf, totalLines } = segmentText(property.value);
+                const ctx: Mutable<GraphemeContext> = {
+                    index: 0,
+                    line: 0,
+                    indexInLine: 0,
+                    lineLength: 0,
+                    totalLines: 0,
+                    iteration: 0,
+                    state: this.options.initState(),
+                };
+                const fn = this.fn;
+                const iteration = Math.max(1, this.options.iterations);
+
+                for (let iter = 0; iter < iteration; iter++) {
+                    graphemes.forEach((seg, globalIndex) => {
+                        const g = seg.segment;
+                        const from = seg.index;
+                        const count = g.length;
+
+                        ctx.index = globalIndex;
+                        ctx.line = lineOf[globalIndex];
+                        ctx.indexInLine = indexInLineOf[globalIndex];
+                        ctx.lineLength = lineLengthOf[globalIndex];
+                        ctx.totalLines = totalLines;
+                        ctx.iteration = iter;
+
+                        const result = fn(g, ctx);
+                        if (iter === iteration - 1 && result) {
+                            style = applyStyle(style, result, from, count);
+                        }
+                    });
+                }
+                return style;
+            }
+        }
+
+        type TextStyleApplier = Atarabi.text.TextStyleApplier;
+
         class TextStyleComposer implements Atarabi.text.TextStyleComposer {
-            protected builders: TextStyleBuilder<any>[] = [];
+            protected builders: TextStyleApplier[] = [];
             protected layoutOptions: TextLayoutOptions = {};
-            add<Rule>(builder: TextStyleBuilder<Rule>): this {
+            add(builder: TextStyleApplier): this {
                 this.builders.push(builder);
                 return this;
             }
             layout(layout: TextLayoutOptions): this {
-                this.layoutOptions = {...this.layoutOptions, ...layout};
+                this.layoutOptions = { ...this.layoutOptions, ...layout };
                 return this;
             }
             apply(property: TextProperty = thisLayer.text.sourceText, style: TextStyleProperty = property.style): TextStyleProperty {
@@ -790,10 +1038,16 @@
         const lib = {
             CharClass,
             TextStyle: {
+                // static
                 byCharClass: () => new CharClassTextStyleBuilder(),
                 byPosition: () => new PositionTextStyleBuilder(),
                 byLine: () => new LineTextStyleBuilder(),
                 bySurrounding: (open: string, close: string, options?: SurroundingOptions) => new SurroundingTextStyleBuilder(open, close, options),
+                byGrapheme: () => new GraphemeTextStyleBuilder(),
+                // dynamic
+                forEachLine: (fn: ForEachLineFunc) => new ForEachLine(fn),
+                forEachGrapheme: (fn: ForEachGraphemeFunc, options?: ForEachGraphemeOptions) => new ForEachGrapheme(fn, options),
+                // compose
                 compose: () => new TextStyleComposer(),
             },
             __internal: {

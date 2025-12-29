@@ -393,28 +393,33 @@ declare namespace Atarabi {
 
         type TextStyleOptions = Partial<TextStyle>;
 
-        interface TextStyleBuilder<Rule> {
+        interface TextStyleApplier {
+            apply(property?: TextProperty, style?: TextStyleProperty): TextStyleProperty;
+        }
+
+        interface TextStyleBuilder<Rule> extends TextStyleApplier {
             rule(style: TextStyleOptions): this;
             rule(rule: Rule, style: TextStyleOptions): this;
             layout(layout?: TextLayoutOptions): this;
-            apply(property?: TextProperty, style?: TextStyleProperty): TextStyleProperty;
         }
 
         type CharClassRule = CharMatcher | CharMatcher[];
 
         interface CharClassTextStyleBuilder extends TextStyleBuilder<CharClassRule> {
             exclusive(): this;
-            overlay(): this;
+            overlay(): this; // default
         }
 
         type Range = { from: number; count?: number };
 
-        type PositionRule = Range;
+        type RangeRule = Range | number | ((index: number) => boolean);
+
+        type PositionRule = Range | number | ((index: number, line?: number) => boolean);
 
         interface PositionTextStyleBuilder extends TextStyleBuilder<PositionRule> {
+            line(): this;
+            global(): this; // default
         }
-
-        type RangeRule = Range | number | ((index: number) => boolean);
 
         type LineRule = RangeRule;
 
@@ -434,17 +439,50 @@ declare namespace Atarabi {
         interface SurroundingTextStyleBuilder extends TextStyleBuilder<SurroundingRule> {
         }
 
-        interface TextStyleComposer {
-            add<Rule>(builder: TextStyleBuilder<Rule>): this;
-            layout(layout: TextLayoutOptions): this;
-            apply(property?: TextProperty, style?: TextStyleProperty): TextStyleProperty;
+        interface GraphemeContext {
+            readonly index: number;
+            readonly line: number;
+            readonly indexInLine: number;
+            readonly lineLength: number;
+            readonly totalLines: number;
+            readonly iteration: number;
+            state: Record<string, unknown>;
         }
 
+        type GraphemeMatcher = (grapheme: string, ctx: GraphemeContext) => boolean | void;
+
+        type GraphemeStateFn = () => Record<string, unknown>;
+
+        type GraphemeRule = GraphemeMatcher | { match: GraphemeMatcher; initState: GraphemeStateFn; };
+
+        interface GraphemeTextStyleBuilder extends TextStyleBuilder<GraphemeRule> {
+            iterations(iter: number): this;
+        }
+
+        interface TextStyleComposer extends TextStyleApplier {
+            add(builder: TextStyleApplier): this;
+            layout(layout: TextLayoutOptions): this;
+        }
+
+        type ForEachLineFunc = (line: string, index: number, total: number) => TextStyleOptions | void;
+
+        type ForEachGraphemeContext = GraphemeContext;
+
+        type ForEachGraphemeFunc = (g: string, ctx: ForEachGraphemeContext) => TextStyleOptions | void;
+
+        type ForEachGraphemeOptions = { iterations?: number; initState?: GraphemeStateFn; };
+
         interface TextStyleRules {
+            // static
             byCharClass(): CharClassTextStyleBuilder;
             byPosition(): PositionTextStyleBuilder;
             byLine(): LineTextStyleBuilder;
             bySurrounding(open: string, close: string, options?: SurroundingOptions): SurroundingTextStyleBuilder;
+            byGrapheme(): GraphemeTextStyleBuilder;
+            // dynamic
+            forEachLine(fn: ForEachLineFunc): TextStyleApplier;
+            forEachGrapheme(fn: ForEachGraphemeFunc, options?: ForEachGraphemeOptions): TextStyleApplier;
+            // compose
             compose(): TextStyleComposer;
         }
 
