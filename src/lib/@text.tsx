@@ -870,7 +870,7 @@
                 lineOf,
                 indexInLineOf,
                 lineLengthOf,
-                totalLines: line,
+                totalLines: line + 1,
             };
         }
 
