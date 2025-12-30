@@ -751,62 +751,65 @@
         function segmentText(text) {
             const segmenter = new Intl.Segmenter(undefined, { granularity: "grapheme" });
             const graphemes = [...segmenter.segment(text)];
-            const lineOf = [];
-            const indexInLineOf = [];
-            const lineLengthOf = [];
-            let line = 0;
-            let indexInLine = 0;
+            const lines = [];
             let lineStart = 0;
+            let lineIndex = 0;
             graphemes.forEach((seg, i) => {
-                lineOf[i] = line;
-                indexInLineOf[i] = indexInLine;
-                indexInLine++;
                 if (isLineBreakGrapheme(seg.segment)) {
-                    const len = i - lineStart + 1;
-                    for (let j = lineStart; j <= i; j++) {
-                        lineLengthOf[j] = len;
-                    }
-                    line++;
-                    indexInLine = 0;
+                    const count = i - lineStart + 1;
+                    lines.push({
+                        index: lineIndex,
+                        from: lineStart,
+                        count,
+                        includeLF: true,
+                    });
+                    lineIndex++;
                     lineStart = i + 1;
                 }
             });
-            const lastLen = graphemes.length - lineStart;
-            for (let j = lineStart; j < graphemes.length; j++) {
-                lineLengthOf[j] = lastLen;
+            // last line
+            if (lineStart < graphemes.length) {
+                lines.push({
+                    index: lineIndex,
+                    from: lineStart,
+                    count: graphemes.length - lineStart,
+                    includeLF: false,
+                });
             }
-            return {
-                graphemes,
-                lineOf,
-                indexInLineOf,
-                lineLengthOf,
-                totalLines: line + 1,
-            };
+            return { graphemes, lines };
         }
         function processGrapheme(text, rules, iteration) {
-            const { graphemes, lineOf, indexInLineOf, lineLengthOf, totalLines } = segmentText(text);
+            const { graphemes, lines } = segmentText(text);
             const results = rules.map(() => []);
             const contexts = rules.map(rule => ({
                 index: 0,
                 line: 0,
                 indexInLine: 0,
                 lineLength: 0,
+                includeLF: false,
                 totalLines: 0,
                 iteration: 0,
                 state: rule.initState(),
             }));
             for (let iter = 0; iter < iteration; iter++) {
+                let line = 0;
+                let lineInfo = lines[0];
                 graphemes.forEach((seg, globalIndex) => {
+                    if (globalIndex >= lineInfo.from + lineInfo.count) {
+                        line++;
+                        lineInfo = lines[line];
+                    }
                     const g = seg.segment;
                     const from = seg.index;
                     const count = g.length;
                     rules.forEach((rule, i) => {
                         const ctx = contexts[i];
                         ctx.index = globalIndex;
-                        ctx.line = lineOf[globalIndex];
-                        ctx.indexInLine = indexInLineOf[globalIndex];
-                        ctx.lineLength = lineLengthOf[globalIndex];
-                        ctx.totalLines = totalLines;
+                        ctx.line = line;
+                        ctx.indexInLine = globalIndex - lineInfo.from;
+                        ctx.includeLF = lineInfo.includeLF;
+                        ctx.lineLength = lineInfo.count;
+                        ctx.totalLines = lines.length;
                         ctx.iteration = iter;
                         if (iter === iteration - 1 && rule.match(g, ctx)) {
                             results[i].push({ from, count });
@@ -878,12 +881,13 @@
                 this.options = { ...{ iterations: 1, initState: () => ({}) }, ...options };
             }
             apply(property = thisLayer.text.sourceText, style = property.style) {
-                const { graphemes, lineOf, indexInLineOf, lineLengthOf, totalLines } = segmentText(property.value);
+                const { graphemes, lines } = segmentText(property.value);
                 const ctx = {
                     index: 0,
                     line: 0,
                     indexInLine: 0,
                     lineLength: 0,
+                    includeLF: false,
                     totalLines: 0,
                     iteration: 0,
                     state: this.options.initState(),
@@ -891,15 +895,22 @@
                 const fn = this.fn;
                 const iteration = Math.max(1, this.options.iterations);
                 for (let iter = 0; iter < iteration; iter++) {
+                    let line = 0;
+                    let lineInfo = lines[0];
                     graphemes.forEach((seg, globalIndex) => {
+                        if (globalIndex >= lineInfo.from + lineInfo.count) {
+                            line++;
+                            lineInfo = lines[line];
+                        }
                         const g = seg.segment;
                         const from = seg.index;
                         const count = g.length;
                         ctx.index = globalIndex;
-                        ctx.line = lineOf[globalIndex];
-                        ctx.indexInLine = indexInLineOf[globalIndex];
-                        ctx.lineLength = lineLengthOf[globalIndex];
-                        ctx.totalLines = totalLines;
+                        ctx.line = line;
+                        ctx.indexInLine = globalIndex - lineInfo.from;
+                        ctx.includeLF = lineInfo.includeLF;
+                        ctx.lineLength = lineInfo.count;
+                        ctx.totalLines = lines.length;
                         ctx.iteration = iter;
                         const result = fn(g, ctx);
                         if (iter === iteration - 1 && result) {

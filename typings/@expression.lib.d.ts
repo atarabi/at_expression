@@ -444,6 +444,7 @@ declare namespace Atarabi {
             readonly line: number;
             readonly indexInLine: number;
             readonly lineLength: number;
+            readonly includeLF: boolean;
             readonly totalLines: number;
             readonly iteration: number;
             state: Record<string, unknown>;
