@@ -52,16 +52,5 @@ Test.describe("splitByCharClass", () => {
             { from: 6, to: 9, index: 0 } // xyz
         ]);
     });
-    Test.test("SymbolOrPunctuation alias", () => {
-        const text = "!$%,あいう";
-        const splits = splitByCharClass(text, [
-            CharClass.Symbols,
-            CharClass.Hiragana
-        ]);
-        Assert.deepEqual(splits, [
-            { from: 0, to: 4, index: 0 }, // !$%,
-            { from: 4, to: 7, index: 1 } // あいう
-        ]);
-    });
 });
 Test.run();

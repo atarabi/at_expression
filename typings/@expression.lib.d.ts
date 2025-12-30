@@ -324,6 +324,7 @@ declare namespace Atarabi {
             readonly Hiragana: "Hiragana";
             readonly Katakana: "Katakana";
             readonly Kanji: "Kanji"; // =Han
+            readonly Japanese: "Japanese",
             readonly Han: "Han";
             readonly Hangul: "Hangul";
 
@@ -370,7 +371,6 @@ declare namespace Atarabi {
             readonly Emoji: "Emoji";
             readonly Symbol: "Symbol";
             readonly Punctuation: "Punctuation";
-            readonly Symbols: "Symbols"; // Symbol + Panctuation
             readonly Yakumono: "Yakumono";
             readonly Space: "Space";
             readonly Separator: "Separator";
@@ -418,7 +418,7 @@ declare namespace Atarabi {
 
         type CountWhenPreset = "all" | "nonWhitespace" | "nonLineBreak" | "nonWhitespaceOrLineBreak";
 
-        type CountWhen = CountWhenPreset | ((g: string) => boolean) | RegExp;
+        type CountWhen = CountWhenPreset | CharClass | ((g: string) => boolean) | RegExp;
 
         interface PositionTextStyleBuilder extends TextStyleBuilder<PositionRule> {
             line(): this;

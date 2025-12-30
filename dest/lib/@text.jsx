@@ -7,6 +7,7 @@
         const REGEX_BY_CLASS = (() => {
             const Hiragana = /\p{Script=Hiragana}/u;
             const Katakana = /\p{Script=Katakana}/u;
+            const Japanese = /[\p{Script=Hiragana}\p{Script=Katakana}\p{Script=Han}ー〆]/u;
             const Han = /\p{Script=Han}/u;
             const Hangul = /\p{Script=Hangul}/u;
             const Latin = /\p{Script=Latin}/u;
@@ -48,6 +49,7 @@
                 Hiragana,
                 Katakana,
                 Kanji: Han,
+                Japanese,
                 Han,
                 Hangul,
                 Latin,
@@ -82,7 +84,6 @@
                 Emoji,
                 Symbol,
                 Punctuation,
-                Symbols: [Symbol, Punctuation],
                 Yakumono,
                 Space,
                 Separator,
@@ -92,6 +93,7 @@
             Hiragana: "Hiragana",
             Katakana: "Katakana",
             Kanji: "Kanji",
+            Japanese: "Japanese",
             Han: "Han",
             Hangul: "Hangul",
             Latin: "Latin",
@@ -126,7 +128,6 @@
             Emoji: "Emoji",
             Symbol: "Symbol",
             Punctuation: "Punctuation",
-            Symbols: "Symbols",
             Yakumono: "Yakumono",
             Space: "Space",
             Separator: "Separator",
@@ -564,7 +565,7 @@
                 return COUNT_WHEN_PRESETS.all;
             }
             if (typeof countWhen === "string") {
-                const preset = COUNT_WHEN_PRESETS[countWhen];
+                const preset = COUNT_WHEN_PRESETS[countWhen] ?? REGEX_BY_CLASS[countWhen];
                 if (!preset) {
                     throw new Error(`Unknown countWhen preset: ${countWhen}`);
                 }
