@@ -229,6 +229,96 @@
             }
             return ranges;
         }
+        function applyTextStyleAll(property, style, field, value) {
+            switch (field) {
+                case "direction":
+                    return style.setDirection(value);
+                case "firstLineIndent":
+                    return style.setFirstLineIndent(value);
+                case "isEveryLineComposer":
+                    return style.setEveryLineComposer(value);
+                case "isHangingRoman":
+                    return style.setHangingRoman(value);
+                case "justification":
+                    return style.setJustification(value);
+                case "leadingType":
+                    return style.setLeadingType(value);
+                case "leftMargin":
+                    return style.setLeftMargin(value);
+                case "rightMargin":
+                    return style.setRightMargin(value);
+                case "spaceAfter":
+                    return style.setSpaceAfter(value);
+                case "spaceBefore":
+                    return style.setSpaceBefore(value);
+                case "applyFill":
+                    return style.setApplyFill(value);
+                case "applyStroke":
+                    return style.setApplyStroke(value);
+                case "baselineDirection":
+                    return style.setBaselineDirection(value);
+                case "baselineOption":
+                    return style.setBaselineOption(value);
+                case "baselineShift":
+                    return style.setBaselineShift(value);
+                case "digitSet":
+                    return style.setDigitSet(value);
+                case "fillColor":
+                    return style.setFillColor(value);
+                case "font":
+                    return style.setFont(value);
+                case "fontSize":
+                    return style.setFontSize(value);
+                case "horizontalScaling":
+                    return style.setHorizontalScaling(value);
+                case "isAllCaps":
+                    return style.setAllCaps(value);
+                case "isAutoLeading":
+                    return style.setAutoLeading(value);
+                case "isFauxBold":
+                    return style.setFauxBold(value);
+                case "isFauxItalic":
+                    return style.setFauxItalic(value);
+                case "isLigature":
+                    return style.setLigature(value);
+                case "isSmallCaps":
+                    return style.setSmallCaps(value);
+                case "kerning":
+                    for (let n = 0, numOfCharacters = property.value.length; n < numOfCharacters; n++) {
+                        style = style.setKerning(value, n);
+                    }
+                    return style;
+                case "kerningType":
+                    return style.setKerningType(value);
+                case "leading":
+                    return style.setLeading(value);
+                case "lineJoin":
+                    return style.setLineJoin(value);
+                case "strokeColor":
+                    return style.setStrokeColor(value);
+                case "strokeWidth":
+                    return style.setStrokeWidth(value);
+                case "tracking":
+                    return style.setTracking(value);
+                case "tsume":
+                    return style.setTsume(value);
+                case "verticalScaling":
+                    return style.setVerticalScaling(value);
+            }
+            throw new Error(`Invalid field: ${field}`);
+        }
+        class AllTextStyleBuilder {
+            style;
+            constructor(style) {
+                this.style = style;
+            }
+            apply(property = thisLayer.text.sourceText, style = property.style) {
+                for (const field in this.style) {
+                    style = applyTextStyleAll(property, style, field, this.style[field]);
+                }
+                return style;
+            }
+        }
         function applyTextLayoutField(style, field, value) {
             switch (field) {
                 case "direction":
@@ -943,6 +1033,7 @@
         const lib = {
             CharClass,
             TextStyle: {
+                all: (style) => new AllTextStyleBuilder(style),
                 // static
                 byCharClass: () => new CharClassTextStyleBuilder(),
                 byPosition: () => new PositionTextStyleBuilder(),

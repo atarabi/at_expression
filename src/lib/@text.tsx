@@ -259,6 +259,95 @@
         type TextStyle = Atarabi.text.TextStyle;
         type TextStyleOptions = Atarabi.text.TextStyleOptions;
 
+        function applyTextStyleAll<FieldL extends keyof TextLayout, FieldS extends keyof TextStyle>(property: TextProperty, style: TextStyleProperty, field: FieldL | FieldS, value: TextLayout[FieldL] | TextStyle[FieldS]): TextStyleProperty {
+            switch (field) {
+                case "direction":
+                    return style.setDirection(value as any);
+                case "firstLineIndent":
+                    return style.setFirstLineIndent(value as any);
+                case "isEveryLineComposer":
+                    return style.setEveryLineComposer(value as any);
+                case "isHangingRoman":
+                    return style.setHangingRoman(value as any);
+                case "justification":
+                    return style.setJustification(value as any);
+                case "leadingType":
+                    return style.setLeadingType(value as any);
+                case "leftMargin":
+                    return style.setLeftMargin(value as any);
+                case "rightMargin":
+                    return style.setRightMargin(value as any);
+                case "spaceAfter":
+                    return style.setSpaceAfter(value as any);
+                case "spaceBefore":
+                    return style.setSpaceBefore(value as any);
+                case "applyFill":
+                    return style.setApplyFill(value as any);
+                case "applyStroke":
+                    return style.setApplyStroke(value as any);
+                case "baselineDirection":
+                    return style.setBaselineDirection(value as any);
+                case "baselineOption":
+                    return style.setBaselineOption(value as any);
+                case "baselineShift":
+                    return style.setBaselineShift(value as any);
+                case "digitSet":
+                    return style.setDigitSet(value as any);
+                case "fillColor":
+                    return style.setFillColor(value as any);
+                case "font":
+                    return style.setFont(value as any);
+                case "fontSize":
+                    return style.setFontSize(value as any);
+                case "horizontalScaling":
+                    return style.setHorizontalScaling(value as any);
+                case "isAllCaps":
+                    return style.setAllCaps(value as any);
+                case "isAutoLeading":
+                    return style.setAutoLeading(value as any);
+                case "isFauxBold":
+                    return style.setFauxBold(value as any);
+                case "isFauxItalic":
+                    return style.setFauxItalic(value as any);
+                case "isLigature":
+                    return style.setLigature(value as any);
+                case "isSmallCaps":
+                    return style.setSmallCaps(value as any);
+                case "kerning":
+                    for (let n = 0, numOfCharacters = property.value.length; n < numOfCharacters; n++) {
+                        style = style.setKerning(value as any, n);
+                    }
+                    return style;
+                case "kerningType":
+                    return style.setKerningType(value as any);
+                case "leading":
+                    return style.setLeading(value as any);
+                case "lineJoin":
+                    return style.setLineJoin(value as any);
+                case "strokeColor":
+                    return style.setStrokeColor(value as any);
+                case "strokeWidth":
+                    return style.setStrokeWidth(value as any);
+                case "tracking":
+                    return style.setTracking(value as any);
+                case "tsume":
+                    return style.setTsume(value as any);
+                case "verticalScaling":
+                    return style.setVerticalScaling(value as any);
+            }
+            throw new Error(`Invalid field: ${field}`);
+        }
+
+        class AllTextStyleBuilder implements Atarabi.text.TextStyleApplier {
+            constructor(public style: TextLayoutOptions | TextStyleOptions) { }
+            apply(property: TextProperty = thisLayer.text.sourceText, style: TextStyleProperty = property.style): TextStyleProperty {
+                for (const field in this.style) {
+                    style = applyTextStyleAll(property, style, field as keyof TextLayout | keyof TextStyle, this.style[field]);
+                }
+                return style;
+            }
+        }
+
         function applyTextLayoutField<Field extends keyof TextLayout>(style: TextStyleProperty, field: Field, value: TextLayout[Field]): TextStyleProperty {
             switch (field) {
                 case "direction":
@@ -987,7 +1076,7 @@
                 this.options = { ...{ iterations: 1, initState: () => ({}) }, ...options };
             }
             apply(property: TextProperty = thisLayer.text.sourceText, style: TextStyleProperty = property.style): TextStyleProperty {
-                const { graphemes, lines} = segmentText(property.value);
+                const { graphemes, lines } = segmentText(property.value);
                 const ctx: Mutable<GraphemeContext> = {
                     index: 0,
                     line: 0,
@@ -1057,6 +1146,7 @@
         const lib = {
             CharClass,
             TextStyle: {
+                all: (style: TextLayoutOptions | TextStyleOptions) => new AllTextStyleBuilder(style),
                 // static
                 byCharClass: () => new CharClassTextStyleBuilder(),
                 byPosition: () => new PositionTextStyleBuilder(),

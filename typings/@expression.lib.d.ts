@@ -474,6 +474,7 @@ declare namespace Atarabi {
         type ForEachGraphemeOptions = { iterations?: number; initState?: GraphemeStateFn; };
 
         interface TextStyleRules {
+            all(style: TextLayoutOptions | TextStyleOptions): TextStyleApplier;
             // static
             byCharClass(): CharClassTextStyleBuilder;
             byPosition(): PositionTextStyleBuilder;
