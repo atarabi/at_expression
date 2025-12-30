@@ -594,16 +594,50 @@
 
         type Range = Atarabi.text.Range;
         type PositionRule = Atarabi.text.PositionRule;
+        type CountWhen = Atarabi.text.CountWhen;
+        type CountWhenPreset = Atarabi.text.CountWhenPreset;
 
-        function convertGraphemeRangesForText(text: string, rules: PositionRule[], line: number = 0): Range[][] {
+        const COUNT_WHEN_PRESETS: Record<CountWhenPreset, (g: string) => boolean> = {
+            all: () => true,
+            nonWhitespace: g => !/^\s$/u.test(g),
+            nonLineBreak: g => g !== "\n" && g !== "\r\n" && g !== "\r",
+            nonWhitespaceOrLineBreak: g => !/^\s$/u.test(g) && g !== "\n" && g !== "\r\n" && g !== "\r",
+        };
+
+        function makeCountPredicate(countWhen?: CountWhen): (g: string) => boolean {
+            if (!countWhen) {
+                return COUNT_WHEN_PRESETS.all;
+            }
+
+            if (typeof countWhen === "string") {
+                const preset = COUNT_WHEN_PRESETS[countWhen];
+                if (!preset) {
+                    throw new Error(`Unknown countWhen preset: ${countWhen}`);
+                }
+                return preset;
+            }
+
+            if (countWhen instanceof RegExp) {
+                return g => countWhen.test(g);
+            }
+
+            return countWhen;
+        }
+
+        function convertGraphemeRangesForText(text: string, rules: PositionRule[], countWhen: CountWhen, line: number = 0): Range[][] {
             const segmenter = new Intl.Segmenter(undefined, { granularity: "grapheme" });
             const graphemes = [...segmenter.segment(text)];
+            const countPredicate = makeCountPredicate(countWhen);
+            const logicalToPhysical: number[] = [];
             const utf16Offsets: number[] = [];
             let offset = 0;
-            for (const grapheme of graphemes) {
+            graphemes.forEach((seg, physicalIndex) => {
+                if (countPredicate(seg.segment)) {
+                    logicalToPhysical.push(physicalIndex);
+                }
                 utf16Offsets.push(offset);
-                offset += grapheme.segment.length;
-            }
+                offset += seg.segment.length;
+            });
             utf16Offsets.push(offset);
 
             const result: Range[][] = [];
@@ -612,26 +646,32 @@
                 let range: Range[] = [];
 
                 if (typeof rule === "number") {
-                    if (rule < graphemes.length) {
-                        const fromUtf16 = utf16Offsets[rule];
-                        const toUtf16 = utf16Offsets[rule + 1];
+                    if (rule < logicalToPhysical.length) {
+                        const physical = logicalToPhysical[rule];
+                        const fromUtf16 = utf16Offsets[physical];
+                        const toUtf16 = utf16Offsets[physical + 1];
                         range.push({ from: fromUtf16, count: toUtf16 - fromUtf16 });
                     }
                 } else if (typeof rule === "function") {
-                    for (let i = 0; i < graphemes.length; i++) {
-                        if (rule(i, line)) {
-                            const fromUtf16 = utf16Offsets[i];
-                            const toUtf16 = utf16Offsets[i + 1];
-                            range.push({ from: fromUtf16, count: toUtf16 - fromUtf16 });
+                    for (let logical = 0; logical < logicalToPhysical.length; logical++) {
+                        if (rule(logical, line)) {
+                            const physical = logicalToPhysical[logical];
+                            const from = utf16Offsets[physical];
+                            const to = utf16Offsets[physical + 1];
+                            range.push({ from, count: to - from });
                         }
                     }
                     range = mergeRanges(range);
                 } else {
                     const start = rule.from;
-                    const end = rule.count != null ? Math.min(start + rule.count, graphemes.length) : graphemes.length;
-                    const fromUtf16 = utf16Offsets[start];
-                    const toUtf16 = utf16Offsets[end];
-                    range.push({ from: fromUtf16, count: toUtf16 - fromUtf16 });
+                    const end = rule.count != null ? Math.min(start + rule.count, logicalToPhysical.length) : logicalToPhysical.length;
+                    for (let logical = start; logical < end; logical++) {
+                        const physical = logicalToPhysical[logical];
+                        const from = utf16Offsets[physical];
+                        const to = utf16Offsets[physical + 1];
+                        range.push({ from, count: to - from });
+                    }
+                    range = mergeRanges(range);
                 }
                 result.push(range);
             }
@@ -639,13 +679,13 @@
             return result;
         }
 
-        function convertGraphemeRangesByLine(text: string, rules: PositionRule[]): Range[][] {
+        function convertGraphemeRangesByLine(text: string, rules: PositionRule[], countWhen: CountWhen): Range[][] {
             const lineRanges = annotateByLine(text);
             const result: Range[][] = rules.map(() => []);
             for (let i = 0; i < lineRanges.length; i++) {
                 const line = lineRanges[i];
                 const lineText = text.slice(line.from, line.from + line.count);
-                const perLine = convertGraphemeRangesForText(lineText, rules, i);
+                const perLine = convertGraphemeRangesForText(lineText, rules, countWhen, i);
                 for (let i = 0; i < perLine.length; i++) {
                     for (const r of perLine[i]) {
                         result[i].push({
@@ -667,6 +707,7 @@
             protected rules: PositionRule[] = [];
             protected styles: TextStyleOptions[] = [];
             protected doLine: boolean = false;
+            protected when: CountWhen = "all";
             protected get defaultRule(): PositionRule {
                 return { from: 0 };
             }
@@ -678,6 +719,10 @@
                 this.doLine = false;
                 return this;
             }
+            countWhen(when: Atarabi.text.CountWhen): this {
+                this.when = when;
+                return this;
+            }
             protected addRule(rule: PositionRule, style: TextStyleOptions): this {
                 this.rules.push(rule);
                 this.styles.push(style);
@@ -685,7 +730,7 @@
             }
             apply(property: TextProperty = thisLayer.text.sourceText, style: TextStyleProperty = property.style): TextStyleProperty {
                 style = this.applyLayout(style);
-                const rangesList = this.doLine ? convertGraphemeRangesByLine(property.value, this.rules) : convertGraphemeRangesForText(property.value, this.rules);
+                const rangesList = this.doLine ? convertGraphemeRangesByLine(property.value, this.rules, this.when) : convertGraphemeRangesForText(property.value, this.rules, this.when);
                 for (let i = 0; i < rangesList.length; i++) {
                     for (const range of rangesList[i]) {
                         const startIndex = range.from;

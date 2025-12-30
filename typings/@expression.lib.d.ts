@@ -416,9 +416,14 @@ declare namespace Atarabi {
 
         type PositionRule = Range | number | ((index: number, line?: number) => boolean);
 
+        type CountWhenPreset = "all" | "nonWhitespace" | "nonLineBreak" | "nonWhitespaceOrLineBreak";
+
+        type CountWhen = CountWhenPreset | ((g: string) => boolean) | RegExp;
+
         interface PositionTextStyleBuilder extends TextStyleBuilder<PositionRule> {
             line(): this;
             global(): this; // default
+            countWhen(when: CountWhen): this; // "all"
         }
 
         type LineRule = RangeRule;
