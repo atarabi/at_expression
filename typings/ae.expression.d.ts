@@ -68,7 +68,7 @@ declare function timeToCurrentFormat(t?: number, fps?: number, isDuration?: bool
 
 declare function timeToFeetAndFrames(t?: number, framesPerFoot?: number, isDuration?: boolean): string;
 
-declare function timeToFrames(t?: number, fps?: number, isDuration?: boolean): string;
+declare function timeToFrames(t?: number, fps?: number, isDuration?: boolean): number;
 
 declare function timeToNTSCTimecode(t?: number, ntscDropFrame?: boolean, isDuration?: boolean): string;
 
