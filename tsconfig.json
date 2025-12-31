@@ -5,7 +5,6 @@
 		"lib": [
 			"ESNext",
 		],
-		"isolatedModules": true,
 		"jsx": "preserve",
 		"rootDir": "./src",
 		"outDir": "./dest",
@@ -13,6 +12,7 @@
 	"include": [
 		"./typings/ae.expression.d.ts",
 		"./typings/@expression.lib.d.ts",
+		"./typings/fontFamily.gen.d.ts",
 		"./src/**/*.tsx",
 		"./src/**/*.jsx",
 	],
