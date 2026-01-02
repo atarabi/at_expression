@@ -347,6 +347,29 @@
                 }
                 return style;
             }
+            resolve(text: string): RangeWithStyle[] {
+                let result: RangeWithStyle[] = [];
+                const style: TextStyleOptions = {};
+                for (const field in this.style) {
+                    switch(field) {
+                        case "direction":
+                        case "firstLineIndent":
+                        case "isEveryLineComposer":
+                        case "isHangingRoman":
+                        case "justification":
+                        case "leadingType":
+                        case "leftMargin":
+                        case "rightMargin":
+                        case "spaceAfter":
+                        case "spaceBefore":
+                            break;
+                        default:
+                            style[field] = this.style[field];
+                    }
+                }
+                result.push({ from: 0, count: text.length, style });
+                return result;
+            }
         }
 
         function applyTextLayoutField<Field extends keyof TextLayout>(style: TextStyleProperty, field: Field, value: TextLayout[Field]): TextStyleProperty {
@@ -385,130 +408,58 @@
         function applyStyleField<Field extends keyof TextStyle>(style: TextStyleProperty, field: Field, value: TextStyle[Field], startIndex: number, numOfCharacters: number): TextStyleProperty {
             switch (field) {
                 case "applyFill":
-                    for (let n = 0; n < numOfCharacters; n++) {
-                        style = style.setApplyFill(value as any, startIndex + n, 1);
-                    }
-                    return style;
+                    return style.setApplyFill(value as any, startIndex, numOfCharacters);
                 case "applyStroke":
-                    for (let n = 0; n < numOfCharacters; n++) {
-                        style = style.setApplyStroke(value as any, startIndex + n, 1);
-                    }
-                    return style;
+                    return style.setApplyStroke(value as any, startIndex, numOfCharacters);
                 case "baselineDirection":
-                    for (let n = 0; n < numOfCharacters; n++) {
-                        style = style.setBaselineDirection(value as any, startIndex + n, 1);
-                    }
-                    return style;
+                    return style.setBaselineDirection(value as any, startIndex, numOfCharacters);
                 case "baselineOption":
-                    for (let n = 0; n < numOfCharacters; n++) {
-                        style = style.setBaselineOption(value as any, startIndex + n, 1);
-                    }
-                    return style;
+                    return style.setBaselineOption(value as any, startIndex, numOfCharacters);
                 case "baselineShift":
-                    for (let n = 0; n < numOfCharacters; n++) {
-                        style = style.setBaselineShift(value as any, startIndex + n, 1);
-                    }
-                    return style;
+                    return style.setBaselineShift(value as any, startIndex, numOfCharacters);
                 case "digitSet":
-                    for (let n = 0; n < numOfCharacters; n++) {
-                        style = style.setDigitSet(value as any, startIndex + n, 1);
-                    }
-                    return style;
+                    return style.setDigitSet(value as any, startIndex, numOfCharacters);
                 case "fillColor":
-                    for (let n = 0; n < numOfCharacters; n++) {
-                        style = style.setFillColor(value as any, startIndex + n, 1);
-                    }
-                    return style;
+                    return style.setFillColor(value as any, startIndex, numOfCharacters);
                 case "font":
-                    for (let n = 0; n < numOfCharacters; n++) {
-                        style = style.setFont(value as any, startIndex + n, 1);
-                    }
-                    return style;
+                    return style.setFont(value as any, startIndex, numOfCharacters);
                 case "fontSize":
-                    for (let n = 0; n < numOfCharacters; n++) {
-                        style = style.setFontSize(value as any, startIndex + n, 1);
-                    }
-                    return style;
+                    return style.setFontSize(value as any, startIndex, numOfCharacters);
                 case "horizontalScaling":
-                    for (let n = 0; n < numOfCharacters; n++) {
-                        style = style.setHorizontalScaling(value as any, startIndex + n, 1);
-                    }
-                    return style;
+                    return style.setHorizontalScaling(value as any, startIndex, numOfCharacters);
                 case "isAllCaps":
-                    for (let n = 0; n < numOfCharacters; n++) {
-                        style = style.setAllCaps(value as any, startIndex + n, 1);
-                    }
-                    return style;
+                    return style.setAllCaps(value as any, startIndex, numOfCharacters);
                 case "isAutoLeading":
-                    for (let n = 0; n < numOfCharacters; n++) {
-                        style = style.setAutoLeading(value as any, startIndex + n, 1);
-                    }
-                    return style;
+                    return style.setAutoLeading(value as any, startIndex, numOfCharacters);
                 case "isFauxBold":
-                    for (let n = 0; n < numOfCharacters; n++) {
-                        style = style.setFauxBold(value as any, startIndex + n, 1);
-                    }
-                    return style;
+                    return style.setFauxBold(value as any, startIndex, numOfCharacters);
                 case "isFauxItalic":
-                    for (let n = 0; n < numOfCharacters; n++) {
-                        style = style.setFauxItalic(value as any, startIndex + n, 1);
-                    }
-                    return style;
+                    return style.setFauxItalic(value as any, startIndex, numOfCharacters);
                 case "isLigature":
-                    for (let n = 0; n < numOfCharacters; n++) {
-                        style = style.setLigature(value as any, startIndex + n, 1);
-                    }
-                    return style;
+                    return style.setLigature(value as any, startIndex, numOfCharacters);
                 case "isSmallCaps":
-                    for (let n = 0; n < numOfCharacters; n++) {
-                        style = style.setSmallCaps(value as any, startIndex + n, 1);
-                    }
-                    return style;
+                    return style.setSmallCaps(value as any, startIndex, numOfCharacters);
                 case "kerning":
                     for (let n = 0; n < numOfCharacters; n++) {
                         style = style.setKerning(value as any, startIndex + n);
                     }
                     return style;
                 case "kerningType":
-                    for (let n = 0; n < numOfCharacters; n++) {
-                        style = style.setKerningType(value as any, startIndex + n, 1);
-                    }
-                    return style;
+                    return style.setKerningType(value as any, startIndex, numOfCharacters);
                 case "leading":
-                    for (let n = 0; n < numOfCharacters; n++) {
-                        style = style.setLeading(value as any, startIndex + n, 1);
-                    }
-                    return style;
+                    return style.setLeading(value as any, startIndex, numOfCharacters);
                 case "lineJoin":
-                    for (let n = 0; n < numOfCharacters; n++) {
-                        style = style.setLineJoin(value as any, startIndex + n, 1);
-                    }
-                    return style;
+                    return style.setLineJoin(value as any, startIndex, numOfCharacters);
                 case "strokeColor":
-                    for (let n = 0; n < numOfCharacters; n++) {
-                        style = style.setStrokeColor(value as any, startIndex + n, 1);
-                    }
-                    return style;
+                    return style.setStrokeColor(value as any, startIndex, numOfCharacters);
                 case "strokeWidth":
-                    for (let n = 0; n < numOfCharacters; n++) {
-                        style = style.setStrokeWidth(value as any, startIndex + n, 1);
-                    }
-                    return style;
+                    return style.setStrokeWidth(value as any, startIndex, numOfCharacters);
                 case "tracking":
-                    for (let n = 0; n < numOfCharacters; n++) {
-                        style = style.setTracking(value as any, startIndex + n, 1);
-                    }
-                    return style;
+                    return style.setTracking(value as any, startIndex, numOfCharacters);
                 case "tsume":
-                    for (let n = 0; n < numOfCharacters; n++) {
-                        style = style.setTsume(value as any, startIndex + n, 1);
-                    }
-                    return style;
+                    return style.setTsume(value as any, startIndex, numOfCharacters);
                 case "verticalScaling":
-                    for (let n = 0; n < numOfCharacters; n++) {
-                        style = style.setVerticalScaling(value as any, startIndex + n, 1);
-                    }
-                    return style;
+                    return style.setVerticalScaling(value as any, startIndex, numOfCharacters);
             }
             throw new Error(`Invalid field: ${field}`);
         }
@@ -522,6 +473,126 @@
 
         function isStyleOnly<Rule>(a: Rule | TextStyleOptions, b?: TextStyleOptions): a is TextStyleOptions {
             return b === undefined;
+        }
+
+        type RangeWithStyle = Atarabi.text.RangeWithStyle;
+
+        function insertRange(ranges: RangeWithStyle[], incoming: RangeWithStyle): void {
+            const inFrom = incoming.from;
+            const inEnd = incoming.from + incoming.count;
+
+            let lo = 0;
+            let hi = ranges.length;
+            while (lo < hi) {
+                const mid = (lo + hi) >> 1;
+                if (ranges[mid].from + ranges[mid].count <= inFrom) {
+                    lo = mid + 1;
+                } else {
+                    hi = mid;
+                }
+            }
+
+            const start = lo;
+
+            let endIdx = start;
+            while (endIdx < ranges.length && ranges[endIdx].from < inEnd) {
+                endIdx++;
+            }
+
+            const replacement: RangeWithStyle[] = [];
+
+            if (start < ranges.length) {
+                const r = ranges[start];
+                if (r.from < inFrom) {
+                    replacement.push({
+                        from: r.from,
+                        count: inFrom - r.from,
+                        style: r.style,
+                    });
+                }
+            }
+
+            if (start < endIdx) {
+                let merged: TextStyleOptions = {};
+
+                for (let i = start; i < endIdx; i++) {
+                    merged = { ...merged, ...ranges[i].style };
+                }
+
+                merged = { ...merged, ...incoming.style };
+
+                replacement.push({
+                    from: inFrom,
+                    count: inEnd - inFrom,
+                    style: merged,
+                });
+            } else {
+                replacement.push({
+                    from: inFrom,
+                    count: inEnd - inFrom,
+                    style: incoming.style,
+                });
+            }
+
+            if (endIdx - 1 >= start && endIdx - 1 < ranges.length) {
+                const r = ranges[endIdx - 1];
+                const rEnd = r.from + r.count;
+                if (inEnd < rEnd) {
+                    replacement.push({
+                        from: inEnd,
+                        count: rEnd - inEnd,
+                        style: r.style,
+                    });
+                }
+            }
+
+            ranges.splice(start, endIdx - start, ...replacement);
+        }
+
+        function insertRanges(ranges: RangeWithStyle[], incomings: RangeWithStyle[]): void {
+            for (const inc of incomings) {
+                insertRange(ranges, inc);
+            }
+        }
+
+        function normalizeRanges(ranges: RangeWithStyle[]): RangeWithStyle[] {
+            if (ranges.length === 0) return [];
+            ranges.sort((a, b) => a.from - b.from);
+
+            const result: RangeWithStyle[] = [];
+
+            for (const cur of ranges) {
+                const last = result[result.length - 1];
+
+                if (last && last.from + last.count > cur.from) {
+                    const lastEnd = last.from + last.count;
+                    const curEnd = cur.from + cur.count;
+
+                    if (last.from < cur.from) {
+                        last.count = cur.from - last.from;
+                    } else {
+                        result.pop();
+                    }
+
+                    result.push({
+                        from: cur.from,
+                        count: Math.min(lastEnd, curEnd) - cur.from,
+                        style: { ...last.style, ...cur.style },
+                    });
+
+                    if (curEnd < lastEnd) {
+                        result.push({
+                            from: curEnd,
+                            count: lastEnd - curEnd,
+                            style: last.style,
+                        });
+                    }
+                } else {
+                    result.push(cur);
+                }
+            }
+
+            return result;
         }
 
         abstract class TextStyleBuilder<Rule> implements Atarabi.text.TextStyleBuilder<Rule> {
@@ -542,7 +613,14 @@
             protected applyLayout(style: TextStyleProperty): TextStyleProperty {
                 return applyTextLayout(style, this.layoutOptions);
             }
-            abstract apply(property: TextProperty, style?: TextStyleProperty): TextStyleProperty;
+            apply(property: TextProperty = thisLayer.text.sourceText, style: TextStyleProperty = property.style): TextStyleProperty {
+                style = this.applyLayout(style);
+                 for (const {from, count, style: st} of this.resolve(property.value)) {
+                    style = applyStyle(style, st, from, count);
+                }
+                return style;
+            }
+            abstract resolve(text: string): RangeWithStyle[];
         }
 
         type CharClassRule = Atarabi.text.CharClassRule;
@@ -567,29 +645,26 @@
                 this.styles.push(style);
                 return this;
             }
-            apply(property: TextProperty = thisLayer.text.sourceText, style: TextStyleProperty = property.style): TextStyleProperty {
-                style = this.applyLayout(style);
+            resolve(text: string): RangeWithStyle[] {
+                let result: RangeWithStyle[] = [];
                 if (this.doExclusive) {
-                    const ranges = annotateByCharClassExclusive(property.value, this.charClasses);
-                    for (const range of ranges) {
-                        if (range.index < 0) {
+                    const ranges = annotateByCharClassExclusive(text, this.charClasses);
+                    for (const {from, count, index} of ranges) {
+                        if (index < 0) {
                             continue;
                         }
-                        const startIndex = range.from;
-                        const numOfCharacters = range.count;
-                        style = applyStyle(style, this.styles[range.index], startIndex, numOfCharacters);
+                        result.push({from, count, style: this.styles[index]});
                     }
                 } else {
                     for (let i = 0; i < this.charClasses.length; i++) {
-                        const ranges = annotateByCharClassOverlay(property.value, this.charClasses[i]);
-                        for (const range of ranges) {
-                            const startIndex = range.from;
-                            const numOfCharacters = range.count;
-                            style = applyStyle(style, this.styles[i], startIndex, numOfCharacters);
+                        const ranges = annotateByCharClassOverlay(text, this.charClasses[i]);
+                        for (const {from, count} of ranges) {
+                            result.push({from, count, style: this.styles[i]});
                         }
                     }
+                    result = normalizeRanges(result);
                 }
-                return style;
+                return result;
             }
         }
 
@@ -729,17 +804,16 @@
                 this.styles.push(style);
                 return this;
             }
-            apply(property: TextProperty = thisLayer.text.sourceText, style: TextStyleProperty = property.style): TextStyleProperty {
-                style = this.applyLayout(style);
-                const rangesList = this.doLine ? convertGraphemeRangesByLine(property.value, this.rules, this.when) : convertGraphemeRangesForText(property.value, this.rules, this.when);
+            resolve(text: string): RangeWithStyle[] {
+                let result: RangeWithStyle[] = [];
+                const rangesList = this.doLine ? convertGraphemeRangesByLine(text, this.rules, this.when) : convertGraphemeRangesForText(text, this.rules, this.when);
                 for (let i = 0; i < rangesList.length; i++) {
-                    for (const range of rangesList[i]) {
-                        const startIndex = range.from;
-                        const numOfCharacters = range.count;
-                        style = applyStyle(style, this.styles[i], startIndex, numOfCharacters);
+                    for (const {from, count} of rangesList[i]) {
+                        result.push({from, count, style: this.styles[i]});
                     }
                 }
-                return style;
+                normalizeRanges(result);
+                return result;
             }
         }
 
@@ -803,18 +877,17 @@
                 this.styles.push(style);
                 return this;
             }
-            apply(property: TextProperty = thisLayer.text.sourceText, style: TextStyleProperty = property.style): TextStyleProperty {
-                style = this.applyLayout(style);
-                const lines = annotateByLine(property.value);
-                for (let i = 0; i < this.rules.length; i++) {
+            resolve(text: string): RangeWithStyle[] {
+                let result: RangeWithStyle[] = [];
+                const lines = annotateByLine(text);
+                 for (let i = 0; i < this.rules.length; i++) {
                     const ranges = deriveRangesFromRangeRule(lines, this.rules[i]);
-                    for (const range of ranges) {
-                        const startIndex = range.from;
-                        const numOfCharacters = range.count;
-                        style = applyStyle(style, this.styles[i], startIndex, numOfCharacters);
+                    for (const {from, count} of ranges) {
+                        result.push({ from, count, style: this.styles[i] });
                     }
                 }
-                return style;
+                normalizeRanges(result);
+                return result;
             }
         }
 
@@ -938,19 +1011,20 @@
                 this.styles.push(style);
                 return this;
             }
-            apply(property: TextProperty = thisLayer.text.sourceText, style: TextStyleProperty = property.style): TextStyleProperty {
-                style = this.applyLayout(style);
-                const surroudnings = annotateBySurrounding(property.value, this.open, this.close, this.options);
+            resolve(text: string): RangeWithStyle[] {
+                let result: RangeWithStyle[] = [];
+                const surroudnings = annotateBySurrounding(text, this.open, this.close, this.options);
                 for (let i = 0; i < this.rules.length; i++) {
                     const ranges = deriveRangesFromRangeRule(surroudnings, this.rules[i]);
-                    for (const range of ranges) {
-                        const startIndex = range.from;
-                        const numOfCharacters = range.count;
-                        if (numOfCharacters <= 0) continue;
-                        style = applyStyle(style, this.styles[i], startIndex, numOfCharacters);
+                    for (const { from, count } of ranges) {
+                        if (count <= 0) {
+                            continue;
+                        }
+                        result.push({ from, count, style: this.styles[i] });
                     }
                 }
-                return style;
+                normalizeRanges(result);
+                return result;
             }
         }
 
@@ -1078,51 +1152,63 @@
                 this.styles.push(style);
                 return this;
             }
-            apply(property: TextProperty = thisLayer.text.sourceText, style: TextStyleProperty = property.style): TextStyleProperty {
-                style = this.applyLayout(style);
-                const rangesList = processGrapheme(property.value, this.rules, this.iteration);
+            resolve(text: string): RangeWithStyle[] {
+                let result: RangeWithStyle[] = [];
+                const rangesList = processGrapheme(text, this.rules, this.iteration);
                 for (let i = 0; i < this.rules.length; i++) {
                     const ranges = rangesList[i];
-                    for (const range of ranges) {
-                        const startIndex = range.from;
-                        const numOfCharacters = range.count;
-                        style = applyStyle(style, this.styles[i], startIndex, numOfCharacters);
+                    for (const {from, count} of ranges) {
+                        result.push({from, count, style: this.styles[i]});
                     }
+                }
+                normalizeRanges(result);
+                return result;
+            }
+        }
+
+        abstract class TextStyleApplier implements Atarabi.text.TextStyleApplier {
+            apply(property: TextProperty = thisLayer.text.sourceText, style: TextStyleProperty = property.style): TextStyleProperty {
+                 for (const {from, count, style: st} of this.resolve(property.value)) {
+                    style = applyStyle(style, st, from, count);
                 }
                 return style;
             }
+            abstract resolve(text: string): RangeWithStyle[];
         }
 
         type ForEachLineFunc = Atarabi.text.ForEachLineFunc;
 
-        class ForEachLine implements Atarabi.text.TextStyleApplier {
+        class ForEachLine extends TextStyleApplier implements Atarabi.text.TextStyleApplier {
             constructor(public fn: ForEachLineFunc) {
+                super();
             }
-            apply(property: TextProperty = thisLayer.text.sourceText, style: TextStyleProperty = property.style): TextStyleProperty {
-                const text = property.value;
+            resolve(text: string): RangeWithStyle[] {
+                let result: RangeWithStyle[] = [];
                 const lines = annotateByLine(text);
                 const fn = this.fn;
                 for (let i = 0; i < lines.length; i++) {
                     const line = lines[i];
-                    const result = fn(text.slice(line.from, line.from + line.count), i, lines.length);
-                    if (result) {
-                        style = applyStyle(style, result, line.from, line.count);
+                    const res = fn(text.slice(line.from, line.from + line.count), i, lines.length);
+                    if (res) {
+                        result.push({ from: line.from, count: line.count, style: res });
                     }
                 }
-                return style;
+                return result;
             }
         }
 
         type ForEachGraphemeFunc = Atarabi.text.ForEachGraphemeFunc;
         type ForEachGraphemeOptions = Atarabi.text.ForEachGraphemeOptions;
 
-        class ForEachGrapheme implements Atarabi.text.TextStyleApplier {
+        class ForEachGrapheme extends TextStyleApplier implements Atarabi.text.TextStyleApplier {
             protected options: ForEachGraphemeOptions;
             constructor(public fn: ForEachGraphemeFunc, options?: ForEachGraphemeOptions) {
+                super();
                 this.options = { ...{ iterations: 1, initState: () => ({}) }, ...options };
             }
-            apply(property: TextProperty = thisLayer.text.sourceText, style: TextStyleProperty = property.style): TextStyleProperty {
-                const { graphemes, lines } = segmentText(property.value);
+            resolve(text: string): RangeWithStyle[] {
+                let result: RangeWithStyle[] = [];
+                const { graphemes, lines } = segmentText(text);
                 const ctx: Mutable<GraphemeContext> = {
                     index: 0,
                     line: 0,
@@ -1157,22 +1243,20 @@
                         ctx.totalLines = lines.length;
                         ctx.iteration = iter;
 
-                        const result = fn(g, ctx);
-                        if (iter === iteration - 1 && result) {
-                            style = applyStyle(style, result, from, count);
+                        const ret = fn(g, ctx);
+                        if (iter === iteration - 1 && ret) {
+                            result.push({from, count, style: ret});
                         }
                     });
                 }
-                return style;
+                return result;
             }
         }
 
-        type TextStyleApplier = Atarabi.text.TextStyleApplier;
-
         class TextStyleComposer implements Atarabi.text.TextStyleComposer {
-            protected builders: TextStyleApplier[] = [];
+            protected builders: Atarabi.text.TextStyleApplier[] = [];
             protected layoutOptions: TextLayoutOptions = {};
-            add(builder: TextStyleApplier): this {
+            add(builder: Atarabi.text.TextStyleApplier): this {
                 this.builders.push(builder);
                 return this;
             }
@@ -1182,10 +1266,21 @@
             }
             apply(property: TextProperty = thisLayer.text.sourceText, style: TextStyleProperty = property.style): TextStyleProperty {
                 style = applyTextLayout(style, this.layoutOptions);
-                for (const builder of this.builders) {
-                    style = builder.apply(property, style);
+                 for (const {from, count, style: st} of this.resolve(property.value)) {
+                    style = applyStyle(style, st, from, count);
                 }
                 return style;
+            }
+            resolve(text: string): RangeWithStyle[] {
+                let result: RangeWithStyle[] = [];
+                for (const builder of this.builders) {
+                    if (result.length) {
+                        insertRanges(result, builder.resolve(text));
+                    } else {
+                        result = builder.resolve(text);
+                    }
+                }
+                return result;
             }
         }
 

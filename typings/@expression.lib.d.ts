@@ -393,8 +393,15 @@ declare namespace Atarabi {
 
         type TextStyleOptions = Partial<TextStyle>;
 
+        interface RangeWithStyle {
+            from: number;
+            count: number;
+            style: TextStyleOptions;
+        }
+
         interface TextStyleApplier {
             apply(property?: TextProperty, style?: TextStyleProperty): TextStyleProperty;
+            resolve(text: string): RangeWithStyle[];
         }
 
         interface TextStyleBuilder<Rule> extends TextStyleApplier {

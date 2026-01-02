@@ -319,6 +319,29 @@
                 }
                 return style;
             }
+            resolve(text) {
+                let result = [];
+                const style = {};
+                for (const field in this.style) {
+                    switch (field) {
+                        case "direction":
+                        case "firstLineIndent":
+                        case "isEveryLineComposer":
+                        case "isHangingRoman":
+                        case "justification":
+                        case "leadingType":
+                        case "leftMargin":
+                        case "rightMargin":
+                        case "spaceAfter":
+                        case "spaceBefore":
+                            break;
+                        default:
+                            style[field] = this.style[field];
+                    }
+                }
+                result.push({ from: 0, count: text.length, style });
+                return result;
+            }
         }
         function applyTextLayoutField(style, field, value) {
             switch (field) {
@@ -354,130 +377,58 @@
         function applyStyleField(style, field, value, startIndex, numOfCharacters) {
             switch (field) {
                 case "applyFill":
-                    for (let n = 0; n < numOfCharacters; n++) {
-                        style = style.setApplyFill(value, startIndex + n, 1);
-                    }
-                    return style;
+                    return style.setApplyFill(value, startIndex, numOfCharacters);
                 case "applyStroke":
-                    for (let n = 0; n < numOfCharacters; n++) {
-                        style = style.setApplyStroke(value, startIndex + n, 1);
-                    }
-                    return style;
+                    return style.setApplyStroke(value, startIndex, numOfCharacters);
                 case "baselineDirection":
-                    for (let n = 0; n < numOfCharacters; n++) {
-                        style = style.setBaselineDirection(value, startIndex + n, 1);
-                    }
-                    return style;
+                    return style.setBaselineDirection(value, startIndex, numOfCharacters);
                 case "baselineOption":
-                    for (let n = 0; n < numOfCharacters; n++) {
-                        style = style.setBaselineOption(value, startIndex + n, 1);
-                    }
-                    return style;
+                    return style.setBaselineOption(value, startIndex, numOfCharacters);
                 case "baselineShift":
-                    for (let n = 0; n < numOfCharacters; n++) {
-                        style = style.setBaselineShift(value, startIndex + n, 1);
-                    }
-                    return style;
+                    return style.setBaselineShift(value, startIndex, numOfCharacters);
                 case "digitSet":
-                    for (let n = 0; n < numOfCharacters; n++) {
-                        style = style.setDigitSet(value, startIndex + n, 1);
-                    }
-                    return style;
+                    return style.setDigitSet(value, startIndex, numOfCharacters);
                 case "fillColor":
-                    for (let n = 0; n < numOfCharacters; n++) {
-                        style = style.setFillColor(value, startIndex + n, 1);
-                    }
-                    return style;
+                    return style.setFillColor(value, startIndex, numOfCharacters);
                 case "font":
-                    for (let n = 0; n < numOfCharacters; n++) {
-                        style = style.setFont(value, startIndex + n, 1);
-                    }
-                    return style;
+                    return style.setFont(value, startIndex, numOfCharacters);
                 case "fontSize":
-                    for (let n = 0; n < numOfCharacters; n++) {
-                        style = style.setFontSize(value, startIndex + n, 1);
-                    }
-                    return style;
+                    return style.setFontSize(value, startIndex, numOfCharacters);
                 case "horizontalScaling":
-                    for (let n = 0; n < numOfCharacters; n++) {
-                        style = style.setHorizontalScaling(value, startIndex + n, 1);
-                    }
-                    return style;
+                    return style.setHorizontalScaling(value, startIndex, numOfCharacters);
                 case "isAllCaps":
-                    for (let n = 0; n < numOfCharacters; n++) {
-                        style = style.setAllCaps(value, startIndex + n, 1);
-                    }
-                    return style;
+                    return style.setAllCaps(value, startIndex, numOfCharacters);
                 case "isAutoLeading":
-                    for (let n = 0; n < numOfCharacters; n++) {
-                        style = style.setAutoLeading(value, startIndex + n, 1);
-                    }
-                    return style;
+                    return style.setAutoLeading(value, startIndex, numOfCharacters);
                 case "isFauxBold":
-                    for (let n = 0; n < numOfCharacters; n++) {
-                        style = style.setFauxBold(value, startIndex + n, 1);
-                    }
-                    return style;
+                    return style.setFauxBold(value, startIndex, numOfCharacters);
                 case "isFauxItalic":
-                    for (let n = 0; n < numOfCharacters; n++) {
-                        style = style.setFauxItalic(value, startIndex + n, 1);
-                    }
-                    return style;
+                    return style.setFauxItalic(value, startIndex, numOfCharacters);
                 case "isLigature":
-                    for (let n = 0; n < numOfCharacters; n++) {
-                        style = style.setLigature(value, startIndex + n, 1);
-                    }
-                    return style;
+                    return style.setLigature(value, startIndex, numOfCharacters);
                 case "isSmallCaps":
-                    for (let n = 0; n < numOfCharacters; n++) {
-                        style = style.setSmallCaps(value, startIndex + n, 1);
-                    }
-                    return style;
+                    return style.setSmallCaps(value, startIndex, numOfCharacters);
                 case "kerning":
                     for (let n = 0; n < numOfCharacters; n++) {
                         style = style.setKerning(value, startIndex + n);
                     }
                     return style;
                 case "kerningType":
-                    for (let n = 0; n < numOfCharacters; n++) {
-                        style = style.setKerningType(value, startIndex + n, 1);
-                    }
-                    return style;
+                    return style.setKerningType(value, startIndex, numOfCharacters);
                 case "leading":
-                    for (let n = 0; n < numOfCharacters; n++) {
-                        style = style.setLeading(value, startIndex + n, 1);
-                    }
-                    return style;
+                    return style.setLeading(value, startIndex, numOfCharacters);
                 case "lineJoin":
-                    for (let n = 0; n < numOfCharacters; n++) {
-                        style = style.setLineJoin(value, startIndex + n, 1);
-                    }
-                    return style;
+                    return style.setLineJoin(value, startIndex, numOfCharacters);
                 case "strokeColor":
-                    for (let n = 0; n < numOfCharacters; n++) {
-                        style = style.setStrokeColor(value, startIndex + n, 1);
-                    }
-                    return style;
+                    return style.setStrokeColor(value, startIndex, numOfCharacters);
                 case "strokeWidth":
-                    for (let n = 0; n < numOfCharacters; n++) {
-                        style = style.setStrokeWidth(value, startIndex + n, 1);
-                    }
-                    return style;
+                    return style.setStrokeWidth(value, startIndex, numOfCharacters);
                 case "tracking":
-                    for (let n = 0; n < numOfCharacters; n++) {
-                        style = style.setTracking(value, startIndex + n, 1);
-                    }
-                    return style;
+                    return style.setTracking(value, startIndex, numOfCharacters);
                 case "tsume":
-                    for (let n = 0; n < numOfCharacters; n++) {
-                        style = style.setTsume(value, startIndex + n, 1);
-                    }
-                    return style;
+                    return style.setTsume(value, startIndex, numOfCharacters);
                 case "verticalScaling":
-                    for (let n = 0; n < numOfCharacters; n++) {
-                        style = style.setVerticalScaling(value, startIndex + n, 1);
-                    }
-                    return style;
+                    return style.setVerticalScaling(value, startIndex, numOfCharacters);
             }
             throw new Error(`Invalid field: ${field}`);
         }
@@ -489,6 +440,108 @@
         }
         function isStyleOnly(a, b) {
             return b === undefined;
+        }
+        function insertRange(ranges, incoming) {
+            const inFrom = incoming.from;
+            const inEnd = incoming.from + incoming.count;
+            let lo = 0;
+            let hi = ranges.length;
+            while (lo < hi) {
+                const mid = (lo + hi) >> 1;
+                if (ranges[mid].from + ranges[mid].count <= inFrom) {
+                    lo = mid + 1;
+                }
+                else {
+                    hi = mid;
+                }
+            }
+            const start = lo;
+            let endIdx = start;
+            while (endIdx < ranges.length && ranges[endIdx].from < inEnd) {
+                endIdx++;
+            }
+            const replacement = [];
+            if (start < ranges.length) {
+                const r = ranges[start];
+                if (r.from < inFrom) {
+                    replacement.push({
+                        from: r.from,
+                        count: inFrom - r.from,
+                        style: r.style,
+                    });
+                }
+            }
+            if (start < endIdx) {
+                let merged = {};
+                for (let i = start; i < endIdx; i++) {
+                    merged = { ...merged, ...ranges[i].style };
+                }
+                merged = { ...merged, ...incoming.style };
+                replacement.push({
+                    from: inFrom,
+                    count: inEnd - inFrom,
+                    style: merged,
+                });
+            }
+            else {
+                replacement.push({
+                    from: inFrom,
+                    count: inEnd - inFrom,
+                    style: incoming.style,
+                });
+            }
+            if (endIdx - 1 >= start && endIdx - 1 < ranges.length) {
+                const r = ranges[endIdx - 1];
+                const rEnd = r.from + r.count;
+                if (inEnd < rEnd) {
+                    replacement.push({
+                        from: inEnd,
+                        count: rEnd - inEnd,
+                        style: r.style,
+                    });
+                }
+            }
+            ranges.splice(start, endIdx - start, ...replacement);
+        }
+        function insertRanges(ranges, incomings) {
+            for (const inc of incomings) {
+                insertRange(ranges, inc);
+            }
+        }
+        function normalizeRanges(ranges) {
+            if (ranges.length === 0)
+                return [];
+            ranges.sort((a, b) => a.from - b.from);
+            const result = [];
+            for (const cur of ranges) {
+                const last = result[result.length - 1];
+                if (last && last.from + last.count > cur.from) {
+                    const lastEnd = last.from + last.count;
+                    const curEnd = cur.from + cur.count;
+                    if (last.from < cur.from) {
+                        last.count = cur.from - last.from;
+                    }
+                    else {
+                        result.pop();
+                    }
+                    result.push({
+                        from: cur.from,
+                        count: Math.min(lastEnd, curEnd) - cur.from,
+                        style: { ...last.style, ...cur.style },
+                    });
+                    if (curEnd < lastEnd) {
+                        result.push({
+                            from: curEnd,
+                            count: lastEnd - curEnd,
+                            style: last.style,
+                        });
+                    }
+                }
+                else {
+                    result.push(cur);
+                }
+            }
+            return result;
         }
         class TextStyleBuilder {
             layoutOptions = {};
@@ -506,6 +559,13 @@
             }
             applyLayout(style) {
                 return applyTextLayout(style, this.layoutOptions);
+            }
+            apply(property = thisLayer.text.sourceText, style = property.style) {
+                style = this.applyLayout(style);
+                for (const { from, count, style: st } of this.resolve(property.value)) {
+                    style = applyStyle(style, st, from, count);
+                }
+                return style;
             }
         }
         class CharClassTextStyleBuilder extends TextStyleBuilder {
@@ -528,30 +588,27 @@
                 this.styles.push(style);
                 return this;
             }
-            apply(property = thisLayer.text.sourceText, style = property.style) {
-                style = this.applyLayout(style);
+            resolve(text) {
+                let result = [];
                 if (this.doExclusive) {
-                    const ranges = annotateByCharClassExclusive(property.value, this.charClasses);
-                    for (const range of ranges) {
-                        if (range.index < 0) {
+                    const ranges = annotateByCharClassExclusive(text, this.charClasses);
+                    for (const { from, count, index } of ranges) {
+                        if (index < 0) {
                             continue;
                         }
-                        const startIndex = range.from;
-                        const numOfCharacters = range.count;
-                        style = applyStyle(style, this.styles[range.index], startIndex, numOfCharacters);
+                        result.push({ from, count, style: this.styles[index] });
                     }
                 }
                 else {
                     for (let i = 0; i < this.charClasses.length; i++) {
-                        const ranges = annotateByCharClassOverlay(property.value, this.charClasses[i]);
-                        for (const range of ranges) {
-                            const startIndex = range.from;
-                            const numOfCharacters = range.count;
-                            style = applyStyle(style, this.styles[i], startIndex, numOfCharacters);
+                        const ranges = annotateByCharClassOverlay(text, this.charClasses[i]);
+                        for (const { from, count } of ranges) {
+                            result.push({ from, count, style: this.styles[i] });
                         }
                     }
+                    result = normalizeRanges(result);
                 }
-                return style;
+                return result;
             }
         }
         const COUNT_WHEN_PRESETS = {
@@ -674,17 +731,16 @@
                 this.styles.push(style);
                 return this;
             }
-            apply(property = thisLayer.text.sourceText, style = property.style) {
-                style = this.applyLayout(style);
-                const rangesList = this.doLine ? convertGraphemeRangesByLine(property.value, this.rules, this.when) : convertGraphemeRangesForText(property.value, this.rules, this.when);
+            resolve(text) {
+                let result = [];
+                const rangesList = this.doLine ? convertGraphemeRangesByLine(text, this.rules, this.when) : convertGraphemeRangesForText(text, this.rules, this.when);
                 for (let i = 0; i < rangesList.length; i++) {
-                    for (const range of rangesList[i]) {
-                        const startIndex = range.from;
-                        const numOfCharacters = range.count;
-                        style = applyStyle(style, this.styles[i], startIndex, numOfCharacters);
+                    for (const { from, count } of rangesList[i]) {
+                        result.push({ from, count, style: this.styles[i] });
                     }
                 }
-                return style;
+                normalizeRanges(result);
+                return result;
             }
         }
         function annotateByLine(text) {
@@ -740,18 +796,17 @@
                 this.styles.push(style);
                 return this;
             }
-            apply(property = thisLayer.text.sourceText, style = property.style) {
-                style = this.applyLayout(style);
-                const lines = annotateByLine(property.value);
+            resolve(text) {
+                let result = [];
+                const lines = annotateByLine(text);
                 for (let i = 0; i < this.rules.length; i++) {
                     const ranges = deriveRangesFromRangeRule(lines, this.rules[i]);
-                    for (const range of ranges) {
-                        const startIndex = range.from;
-                        const numOfCharacters = range.count;
-                        style = applyStyle(style, this.styles[i], startIndex, numOfCharacters);
+                    for (const { from, count } of ranges) {
+                        result.push({ from, count, style: this.styles[i] });
                     }
                 }
-                return style;
+                normalizeRanges(result);
+                return result;
             }
         }
         function findNoneNested(text, open, close) {
@@ -858,20 +913,20 @@
                 this.styles.push(style);
                 return this;
             }
-            apply(property = thisLayer.text.sourceText, style = property.style) {
-                style = this.applyLayout(style);
-                const surroudnings = annotateBySurrounding(property.value, this.open, this.close, this.options);
+            resolve(text) {
+                let result = [];
+                const surroudnings = annotateBySurrounding(text, this.open, this.close, this.options);
                 for (let i = 0; i < this.rules.length; i++) {
                     const ranges = deriveRangesFromRangeRule(surroudnings, this.rules[i]);
-                    for (const range of ranges) {
-                        const startIndex = range.from;
-                        const numOfCharacters = range.count;
-                        if (numOfCharacters <= 0)
+                    for (const { from, count } of ranges) {
+                        if (count <= 0) {
                             continue;
-                        style = applyStyle(style, this.styles[i], startIndex, numOfCharacters);
+                        }
+                        result.push({ from, count, style: this.styles[i] });
                     }
                 }
-                return style;
+                normalizeRanges(result);
+                return result;
             }
         }
         function isLineBreakGrapheme(g) {
@@ -969,48 +1024,58 @@
                 this.styles.push(style);
                 return this;
             }
-            apply(property = thisLayer.text.sourceText, style = property.style) {
-                style = this.applyLayout(style);
-                const rangesList = processGrapheme(property.value, this.rules, this.iteration);
+            resolve(text) {
+                let result = [];
+                const rangesList = processGrapheme(text, this.rules, this.iteration);
                 for (let i = 0; i < this.rules.length; i++) {
                     const ranges = rangesList[i];
-                    for (const range of ranges) {
-                        const startIndex = range.from;
-                        const numOfCharacters = range.count;
-                        style = applyStyle(style, this.styles[i], startIndex, numOfCharacters);
+                    for (const { from, count } of ranges) {
+                        result.push({ from, count, style: this.styles[i] });
                     }
+                }
+                normalizeRanges(result);
+                return result;
+            }
+        }
+        class TextStyleApplier {
+            apply(property = thisLayer.text.sourceText, style = property.style) {
+                for (const { from, count, style: st } of this.resolve(property.value)) {
+                    style = applyStyle(style, st, from, count);
                 }
                 return style;
             }
         }
-        class ForEachLine {
+        class ForEachLine extends TextStyleApplier {
             fn;
             constructor(fn) {
+                super();
                 this.fn = fn;
             }
-            apply(property = thisLayer.text.sourceText, style = property.style) {
-                const text = property.value;
+            resolve(text) {
+                let result = [];
                 const lines = annotateByLine(text);
                 const fn = this.fn;
                 for (let i = 0; i < lines.length; i++) {
                     const line = lines[i];
-                    const result = fn(text.slice(line.from, line.from + line.count), i, lines.length);
-                    if (result) {
-                        style = applyStyle(style, result, line.from, line.count);
+                    const res = fn(text.slice(line.from, line.from + line.count), i, lines.length);
+                    if (res) {
+                        result.push({ from: line.from, count: line.count, style: res });
                     }
                 }
-                return style;
+                return result;
             }
         }
-        class ForEachGrapheme {
+        class ForEachGrapheme extends TextStyleApplier {
             fn;
             options;
             constructor(fn, options) {
+                super();
                 this.fn = fn;
                 this.options = { ...{ iterations: 1, initState: () => ({}) }, ...options };
             }
-            apply(property = thisLayer.text.sourceText, style = property.style) {
-                const { graphemes, lines } = segmentText(property.value);
+            resolve(text) {
+                let result = [];
+                const { graphemes, lines } = segmentText(text);
                 const ctx = {
                     index: 0,
                     line: 0,
@@ -1041,13 +1106,13 @@
                         ctx.lineLength = lineInfo.count;
                         ctx.totalLines = lines.length;
                         ctx.iteration = iter;
-                        const result = fn(g, ctx);
-                        if (iter === iteration - 1 && result) {
-                            style = applyStyle(style, result, from, count);
+                        const ret = fn(g, ctx);
+                        if (iter === iteration - 1 && ret) {
+                            result.push({ from, count, style: ret });
                         }
                     });
                 }
-                return style;
+                return result;
             }
         }
         class TextStyleComposer {
@@ -1063,10 +1128,22 @@
             }
             apply(property = thisLayer.text.sourceText, style = property.style) {
                 style = applyTextLayout(style, this.layoutOptions);
-                for (const builder of this.builders) {
-                    style = builder.apply(property, style);
+                for (const { from, count, style: st } of this.resolve(property.value)) {
+                    style = applyStyle(style, st, from, count);
                 }
                 return style;
+            }
+            resolve(text) {
+                let result = [];
+                for (const builder of this.builders) {
+                    if (result.length) {
+                        insertRanges(result, builder.resolve(text));
+                    }
+                    else {
+                        result = builder.resolve(text);
+                    }
+                }
+                return result;
             }
         }
         const lib = {
