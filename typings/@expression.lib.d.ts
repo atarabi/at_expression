@@ -440,7 +440,7 @@ declare namespace Atarabi {
         interface LineTextStyleBuilder extends TextStyleBuilder<LineRule> {
         }
 
-        type SurroundingRule = RangeRule;
+        type SurroundingRule = RangeRule | RangeRule[];
 
         type SurroundingTarget = "all" | "content" | "delimiter" | "open" | "close"; // default: "content"
 

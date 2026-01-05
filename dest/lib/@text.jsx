@@ -990,13 +990,22 @@
             resolve(text) {
                 let result = [];
                 const surroudnings = annotateBySurrounding(text, this.open, this.close, this.options);
-                for (let i = 0; i < this.rules.length; i++) {
-                    const ranges = deriveRangesFromRangeRule(surroudnings, this.rules[i]);
+                const interpretRule = (rule, style) => {
+                    const ranges = deriveRangesFromRangeRule(surroudnings, rule);
                     for (const { from, count } of ranges) {
                         if (count <= 0) {
                             continue;
                         }
-                        result.push({ from, count, style: this.styles[i] });
+                        result.push({ from, count, style });
+                    }
+                };
+                for (let i = 0; i < this.rules.length; i++) {
+                    const rule = this.rules[i];
+                    if (Array.isArray(rule)) {
+                        rule.forEach(r => interpretRule(r, this.styles[i]));
+                    }
+                    else {
+                        interpretRule(rule, this.styles[i]);
                     }
                 }
                 result = normalizeRanges(result);
