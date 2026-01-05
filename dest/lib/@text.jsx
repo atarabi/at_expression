@@ -709,37 +709,44 @@
             const result = [];
             for (const rule of rules) {
                 let range = [];
-                if (typeof rule === "number") {
-                    if (rule < logicalToPhysical.length) {
-                        const physical = logicalToPhysical[rule];
-                        const fromUtf16 = utf16Offsets[physical];
-                        const toUtf16 = utf16Offsets[physical + 1];
-                        range.push({ from: fromUtf16, count: toUtf16 - fromUtf16 });
+                const interpretRule = (rule) => {
+                    if (typeof rule === "number") {
+                        if (rule < logicalToPhysical.length) {
+                            const physical = logicalToPhysical[rule];
+                            const fromUtf16 = utf16Offsets[physical];
+                            const toUtf16 = utf16Offsets[physical + 1];
+                            range.push({ from: fromUtf16, count: toUtf16 - fromUtf16 });
+                        }
                     }
-                }
-                else if (typeof rule === "function") {
-                    for (let logical = 0; logical < logicalToPhysical.length; logical++) {
-                        if (rule(logical, line)) {
+                    else if (typeof rule === "function") {
+                        for (let logical = 0; logical < logicalToPhysical.length; logical++) {
+                            if (rule(logical, line)) {
+                                const physical = logicalToPhysical[logical];
+                                const from = utf16Offsets[physical];
+                                const to = utf16Offsets[physical + 1];
+                                range.push({ from, count: to - from });
+                            }
+                        }
+                        range = mergeRanges(range);
+                    }
+                    else {
+                        const start = rule.from;
+                        const end = rule.count != null ? Math.min(start + rule.count, logicalToPhysical.length) : logicalToPhysical.length;
+                        for (let logical = start; logical < end; logical++) {
                             const physical = logicalToPhysical[logical];
                             const from = utf16Offsets[physical];
                             const to = utf16Offsets[physical + 1];
                             range.push({ from, count: to - from });
                         }
                     }
-                    range = mergeRanges(range);
+                };
+                if (Array.isArray(rule)) {
+                    rule.forEach(r => interpretRule(r));
                 }
                 else {
-                    const start = rule.from;
-                    const end = rule.count != null ? Math.min(start + rule.count, logicalToPhysical.length) : logicalToPhysical.length;
-                    for (let logical = start; logical < end; logical++) {
-                        const physical = logicalToPhysical[logical];
-                        const from = utf16Offsets[physical];
-                        const to = utf16Offsets[physical + 1];
-                        range.push({ from, count: to - from });
-                    }
-                    range = mergeRanges(range);
+                    interpretRule(rule);
                 }
-                result.push(range);
+                result.push(mergeRanges(range));
             }
             return result;
         }
@@ -857,10 +864,19 @@
             resolve(text) {
                 let result = [];
                 const lines = annotateByLine(text);
-                for (let i = 0; i < this.rules.length; i++) {
-                    const ranges = deriveRangesFromRangeRule(lines, this.rules[i]);
+                const interpretRule = (rule, style) => {
+                    const ranges = deriveRangesFromRangeRule(lines, rule);
                     for (const { from, count } of ranges) {
-                        result.push({ from, count, style: this.styles[i] });
+                        result.push({ from, count, style });
+                    }
+                };
+                for (let i = 0; i < this.rules.length; i++) {
+                    const rule = this.rules[i];
+                    if (Array.isArray(rule)) {
+                        rule.forEach(r => interpretRule(r, this.styles[i]));
+                    }
+                    else {
+                        interpretRule(rule, this.styles[i]);
                     }
                 }
                 result = normalizeRanges(result);

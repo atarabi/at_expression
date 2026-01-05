@@ -421,7 +421,9 @@ declare namespace Atarabi {
 
         type RangeRule = Range | number | ((index: number) => boolean);
 
-        type PositionRule = Range | number | ((index: number, line?: number) => boolean);
+        type PositionRuleItem = Range | number | ((index: number, line?: number) => boolean);
+
+        type PositionRule = PositionRuleItem | PositionRuleItem[];
 
         type CountWhenPreset = "all" | "nonWhitespace" | "nonLineBreak" | "nonWhitespaceOrLineBreak";
 
@@ -433,7 +435,7 @@ declare namespace Atarabi {
             countWhen(when: CountWhen): this; // "all"
         }
 
-        type LineRule = RangeRule;
+        type LineRule = RangeRule | RangeRule[];
 
         interface LineTextStyleBuilder extends TextStyleBuilder<LineRule> {
         }
