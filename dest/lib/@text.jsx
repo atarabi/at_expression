@@ -441,105 +441,163 @@
         function isStyleOnly(a, b) {
             return b === undefined;
         }
-        function insertRange(ranges, incoming) {
-            const inFrom = incoming.from;
-            const inEnd = incoming.from + incoming.count;
+        function lowerBound(ranges, from) {
             let lo = 0;
             let hi = ranges.length;
             while (lo < hi) {
                 const mid = (lo + hi) >> 1;
-                if (ranges[mid].from + ranges[mid].count <= inFrom) {
+                const r = ranges[mid];
+                if (r.from + r.count <= from) {
                     lo = mid + 1;
                 }
                 else {
                     hi = mid;
                 }
             }
-            const start = lo;
-            let endIdx = start;
-            while (endIdx < ranges.length && ranges[endIdx].from < inEnd) {
-                endIdx++;
-            }
-            const replacement = [];
-            if (start < ranges.length) {
-                const r = ranges[start];
-                if (r.from < inFrom) {
-                    replacement.push({
-                        from: r.from,
-                        count: inFrom - r.from,
-                        style: r.style,
+            return lo;
+        }
+        function addNormalizedRange(ranges, incoming) {
+            if (incoming.count <= 0)
+                return;
+            const inStart = incoming.from;
+            const inEnd = incoming.from + incoming.count;
+            let i = lowerBound(ranges, inStart);
+            while (i < ranges.length) {
+                const cur = ranges[i];
+                const curStart = cur.from;
+                const curEnd = cur.from + cur.count;
+                if (curStart >= inEnd)
+                    break;
+                const overlapStart = Math.max(curStart, inStart);
+                const overlapEnd = Math.min(curEnd, inEnd);
+                const replaced = [];
+                if (curStart < overlapStart) {
+                    replaced.push({
+                        from: curStart,
+                        count: overlapStart - curStart,
+                        style: cur.style,
                     });
                 }
-            }
-            if (start < endIdx) {
-                let merged = {};
-                for (let i = start; i < endIdx; i++) {
-                    merged = { ...merged, ...ranges[i].style };
-                }
-                merged = { ...merged, ...incoming.style };
-                replacement.push({
-                    from: inFrom,
-                    count: inEnd - inFrom,
-                    style: merged,
+                replaced.push({
+                    from: overlapStart,
+                    count: overlapEnd - overlapStart,
+                    style: { ...cur.style, ...incoming.style },
                 });
-            }
-            else {
-                replacement.push({
-                    from: inFrom,
-                    count: inEnd - inFrom,
-                    style: incoming.style,
-                });
-            }
-            if (endIdx - 1 >= start && endIdx - 1 < ranges.length) {
-                const r = ranges[endIdx - 1];
-                const rEnd = r.from + r.count;
-                if (inEnd < rEnd) {
-                    replacement.push({
-                        from: inEnd,
-                        count: rEnd - inEnd,
-                        style: r.style,
+                if (overlapEnd < curEnd) {
+                    replaced.push({
+                        from: overlapEnd,
+                        count: curEnd - overlapEnd,
+                        style: cur.style,
                     });
                 }
+                ranges.splice(i, 1, ...replaced);
+                i += replaced.length;
             }
-            ranges.splice(start, endIdx - start, ...replacement);
-        }
-        function insertRanges(ranges, incomings) {
-            for (const inc of incomings) {
-                insertRange(ranges, inc);
+            if (i === lowerBound(ranges, inStart)) {
+                ranges.splice(i, 0, incoming);
             }
         }
-        function normalizeRanges(ranges) {
-            if (ranges.length === 0)
+        function addNormalizedRanges(ranges, incoming) {
+            for (const r of incoming) {
+                addNormalizedRange(ranges, r);
+            }
+        }
+        function shallowEqual(a, b) {
+            if (a === b)
+                return true;
+            if (typeof a !== "object" ||
+                typeof b !== "object" ||
+                a === null ||
+                b === null) {
+                return false;
+            }
+            const ka = Object.keys(a);
+            const kb = Object.keys(b);
+            if (ka.length !== kb.length)
+                return false;
+            for (const k of ka) {
+                if (!(k in b))
+                    return false;
+                const va = a[k];
+                const vb = b[k];
+                if (Array.isArray(va) && Array.isArray(vb)) {
+                    if (va.length !== vb.length)
+                        return false;
+                    for (let i = 0; i < va.length; i++) {
+                        if (va[i] !== vb[i])
+                            return false;
+                    }
+                    continue;
+                }
+                if (Array.isArray(va) || Array.isArray(vb)) {
+                    return false;
+                }
+                if (va !== vb)
+                    return false;
+            }
+            return true;
+        }
+        function normalizeRanges(input) {
+            if (input.length === 0)
                 return [];
-            ranges.sort((a, b) => a.from - b.from);
+            const ranges = input
+                .filter(r => r.count > 0)
+                .map((r, i) => ({
+                from: r.from,
+                to: r.from + r.count,
+                style: r.style,
+                priority: i,
+            }));
+            const events = [];
+            for (const r of ranges) {
+                events.push({ pos: r.from, type: "start", range: r });
+                events.push({ pos: r.to, type: "end", range: r });
+            }
+            events.sort((a, b) => a.pos !== b.pos
+                ? a.pos - b.pos
+                : a.type === b.type
+                    ? 0
+                    : a.type === "end"
+                        ? -1
+                        : 1);
+            const active = [];
             const result = [];
-            for (const cur of ranges) {
-                const last = result[result.length - 1];
-                if (last && last.from + last.count > cur.from) {
-                    const lastEnd = last.from + last.count;
-                    const curEnd = cur.from + cur.count;
-                    if (last.from < cur.from) {
-                        last.count = cur.from - last.from;
+            let lastPos = null;
+            for (const e of events) {
+                if (lastPos !== null && lastPos < e.pos && active.length > 0) {
+                    let style = {};
+                    for (const r of active) {
+                        style = { ...style, ...r.style };
+                    }
+                    const last = result[result.length - 1];
+                    if (last && last.from + last.count === lastPos && shallowEqual(last.style, style)) {
+                        last.count += e.pos - lastPos;
                     }
                     else {
-                        result.pop();
-                    }
-                    result.push({
-                        from: cur.from,
-                        count: Math.min(lastEnd, curEnd) - cur.from,
-                        style: { ...last.style, ...cur.style },
-                    });
-                    if (curEnd < lastEnd) {
                         result.push({
-                            from: curEnd,
-                            count: lastEnd - curEnd,
-                            style: last.style,
+                            from: lastPos,
+                            count: e.pos - lastPos,
+                            style,
                         });
                     }
                 }
-                else {
-                    result.push(cur);
+                if (e.type === "start") {
+                    let lo = 0, hi = active.length;
+                    while (lo < hi) {
+                        const mid = (lo + hi) >> 1;
+                        if (active[mid].priority < e.range.priority)
+                            lo = mid + 1;
+                        else
+                            hi = mid;
+                    }
+                    active.splice(lo, 0, e.range);
                 }
+                else {
+                    const idx = active.indexOf(e.range);
+                    if (idx >= 0)
+                        active.splice(idx, 1);
+                }
+                lastPos = e.pos;
             }
             return result;
         }
@@ -739,7 +797,7 @@
                         result.push({ from, count, style: this.styles[i] });
                     }
                 }
-                normalizeRanges(result);
+                result = normalizeRanges(result);
                 return result;
             }
         }
@@ -805,7 +863,7 @@
                         result.push({ from, count, style: this.styles[i] });
                     }
                 }
-                normalizeRanges(result);
+                result = normalizeRanges(result);
                 return result;
             }
         }
@@ -925,7 +983,7 @@
                         result.push({ from, count, style: this.styles[i] });
                     }
                 }
-                normalizeRanges(result);
+                result = normalizeRanges(result);
                 return result;
             }
         }
@@ -1033,7 +1091,7 @@
                         result.push({ from, count, style: this.styles[i] });
                     }
                 }
-                normalizeRanges(result);
+                result = normalizeRanges(result);
                 return result;
             }
         }
@@ -1137,7 +1195,7 @@
                 let result = [];
                 for (const builder of this.builders) {
                     if (result.length) {
-                        insertRanges(result, builder.resolve(text));
+                        addNormalizedRanges(result, builder.resolve(text));
                     }
                     else {
                         result = builder.resolve(text);
