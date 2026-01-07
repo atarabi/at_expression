@@ -6,140 +6,111 @@
             return LIB.text;
         }
 
-        type CharClass = Atarabi.text.CharClass;
+        type CharClassKey = Atarabi.text.CharClassKey;
 
-        const REGEX_BY_CLASS: Record<CharClass, RegExp | RegExp[]> = (() => {
-            const Hiragana = /\p{Script=Hiragana}/u;
-            const Katakana = /\p{Script=Katakana}/u;
-            const Japanese = /[\p{Script=Hiragana}\p{Script=Katakana}\p{Script=Han}ー〆]/u;
-            const Han = /\p{Script=Han}/u;
-            const Hangul = /\p{Script=Hangul}/u;
-            const Latin = /\p{Script=Latin}/u;
-            const Greek = /\p{Script=Greek}/u;
-            const Cyrillic = /\p{Script=Cyrillic}/u;
-            const Arabic = /\p{Script=Arabic}/u;
-            const Hebrew = /\p{Script=Hebrew}/u;
-            const Armenian = /\p{Script=Armenian}/u;
-            const Georgian = /\p{Script=Georgian}/u;
-            const Devanagari = /\p{Script=Devanagari}/u;
-            const Bengali = /\p{Script=Bengali}/u;
-            const Gurmukhi = /\p{Script=Gurmukhi}/u;
-            const Gujarati = /\p{Script=Gujarati}/u;
-            const Oriya = /\p{Script=Oriya}/u;
-            const Tamil = /\p{Script=Tamil}/u;
-            const Telugu = /\p{Script=Telugu}/u;
-            const Kannada = /\p{Script=Kannada}/u;
-            const Malayalam = /\p{Script=Malayalam}/u;
-            const Sinhala = /\p{Script=Sinhala}/u;
-            const Thai = /\p{Script=Thai}/u;
-            const Lao = /\p{Script=Lao}/u;
-            const Khmer = /\p{Script=Khmer}/u;
-            const Myanmar = /\p{Script=Myanmar}/u;
-            const Ethiopic = /\p{Script=Ethiopic}/u;
-            const Lowercase = /\p{Lowercase_Letter}/u;
-            const Uppercase = /\p{Uppercase_Letter}/u;
-            const Modifier = /\p{Modifier_Letter}/u;
-            const Alphabetic = /\p{Alphabetic}/u;
-            const Letter = /\p{Letter}/u;
-            const Decimal = /\p{Decimal_Number}/u;
-            const Number = /\p{Number}/u;
-            const Emoji = /\p{Extended_Pictographic}/u;
-            const Symbol = /\p{Symbol}/u;
-            const Punctuation = /\p{Punctuation}/u;
-            const Yakumono = /[、。，．・：；？！…―ー〜～「」『』（）［］｛｝〈〉《》【】]/;
-            const Space = /\p{Space_Separator}/u;
-            const Separator = /\p{Separator}/u;
+        class CharClass implements Atarabi.text.CharClass {
+            private _re: RegExp;
+            constructor(private _name: string, re: RegExp) {
+                this._re = Object.freeze(new RegExp(re.source, re.flags));
+            }
+            get name() { return this._name; }
+            get re() { return this._re; }
+            test(g: string) { return this._re.test(g); }
+            static isCharClass(v: any): v is Atarabi.text.CharClass {
+                return v instanceof CharClass;
+            }
+        }
 
-            return {
-                Hiragana,
-                Katakana,
-                Kanji: Han,
-                Japanese,
-                Han,
-                Hangul,
-                Latin,
-                Greek,
-                Cyrillic,
-                Arabic,
-                Hebrew,
-                Armenian,
-                Georgian,
-                Devanagari,
-                Bengali,
-                Gurmukhi,
-                Gujarati,
-                Oriya,
-                Tamil,
-                Telugu,
-                Kannada,
-                Malayalam,
-                Sinhala,
-                Thai,
-                Lao,
-                Khmer,
-                Myanmar,
-                Ethiopic,
-                Lowercase,
-                Uppercase,
-                Modifier,
-                Alphabetic,
-                Letter,
-                Decimal,
-                Number,
-                Emoji,
-                Symbol,
-                Punctuation,
-                Yakumono,
-                Space,
-                Separator,
-            };
-        })();
-
-        const CharClass = {
-            Hiragana: "Hiragana",
-            Katakana: "Katakana",
-            Kanji: "Kanji",
-            Japanese: "Japanese",
-            Han: "Han",
-            Hangul: "Hangul",
-            Latin: "Latin",
-            Greek: "Greek",
-            Cyrillic: "Cyrillic",
-            Arabic: "Arabic",
-            Hebrew: "Hebrew",
-            Armenian: "Armenian",
-            Georgian: "Georgian",
-            Devanagari: "Devanagari",
-            Bengali: "Bengali",
-            Gurmukhi: "Gurmukhi",
-            Gujarati: "Gujarati",
-            Oriya: "Oriya",
-            Tamil: "Tamil",
-            Telugu: "Telugu",
-            Kannada: "Kannada",
-            Malayalam: "Malayalam",
-            Sinhala: "Sinhala",
-            Thai: "Thai",
-            Lao: "Lao",
-            Khmer: "Khmer",
-            Myanmar: "Myanmar",
-            Ethiopic: "Ethiopic",
-            Lowercase: "Lowercase",
-            Uppercase: "Uppercase",
-            Modifier: "Modifier",
-            Alphabetic: "Alphabetic",
-            Letter: "Letter",
-            Decimal: "Decimal",
-            Number: "Number",
-            Emoji: "Emoji",
-            Symbol: "Symbol",
-            Punctuation: "Punctuation",
-            Yakumono: "Yakumono",
-            Space: "Space",
-            Separator: "Separator",
-        } satisfies Atarabi.text.CharClassMap;
+        const CHAR_CLASS_REGISTRY: Record<CharClassKey, CharClass> = {
+            Hiragana: new CharClass("Hiragana", /\p{Script=Hiragana}/u),
+            Katakana: new CharClass("Hiragana", /\p{Script=Katakana}/u),
+            Kanji: new CharClass("Kanji", /\p{Script=Han}/u),
+            Japanese: new CharClass("Hiragana", /[\p{Script=Hiragana}\p{Script=Katakana}\p{Script=Han}ー〆]/u),
+            Han: new CharClass("Han", /\p{Script=Han}/u),
+            Hangul: new CharClass("Hangul", /\p{Script=Hangul}/u),
+            Latin: new CharClass("Latin", /\p{Script=Latin}/u),
+            Greek: new CharClass("Greek", /\p{Script=Greek}/u),
+            Cyrillic: new CharClass("Cyrillic", /\p{Script=Cyrillic}/u),
+            Arabic: new CharClass("Arabic", /\p{Script=Arabic}/u),
+            Hebrew: new CharClass("Hebrew", /\p{Script=Hebrew}/u),
+            Armenian: new CharClass("Armenian", /\p{Script=Armenian}/u),
+            Georgian: new CharClass("Georgian", /\p{Script=Georgian}/u),
+            Devanagari: new CharClass("Devanagari", /\p{Script=Devanagari}/u),
+            Bengali: new CharClass("Bengali", /\p{Script=Bengali}/u),
+            Gurmukhi: new CharClass("Gurmukhi", /\p{Script=Gurmukhi}/u),
+            Gujarati: new CharClass("Gujarati", /\p{Script=Gujarati}/u),
+            Oriya: new CharClass("Oriya", /\p{Script=Oriya}/u),
+            Tamil: new CharClass("Tamil", /\p{Script=Tamil}/u),
+            Telugu: new CharClass("Telugu", /\p{Script=Telugu}/u),
+            Kannada: new CharClass("Kannada", /\p{Script=Kannada}/u),
+            Malayalam: new CharClass("Malayalam", /\p{Script=Malayalam}/u),
+            Sinhala: new CharClass("Sinhala", /\p{Script=Sinhala}/u),
+            Thai: new CharClass("Thai", /\p{Script=Thai}/u),
+            Lao: new CharClass("Lao", /\p{Script=Lao}/u),
+            Khmer: new CharClass("Khmer", /\p{Script=Khmer}/u),
+            Myanmar: new CharClass("Myanmar", /\p{Script=Myanmar}/u),
+            Ethiopic: new CharClass("Ethiopic", /\p{Script=Ethiopic}/u),
+            LowercaseLetter: new CharClass("LowercaseLetter", /\p{Lowercase_Letter}/u),
+            UppercaseLetter: new CharClass("UppercaseLetter", /\p{Uppercase_Letter}/u),
+            ModifierLetter: new CharClass("ModifierLetter", /\p{Modifier_Letter}/u),
+            Alphabetic: new CharClass("Alphabetic", /\p{Alphabetic}/u),
+            Letter: new CharClass("Letter", /\p{Letter}/u),
+            DecimalNumber: new CharClass("DecimalNumber", /\p{Decimal_Number}/u),
+            Number: new CharClass("Number", /\p{Number}/u),
+            Emoji: new CharClass("Emoji", /\p{Extended_Pictographic}/u),
+            Symbol: new CharClass("Symbol", /\p{Symbol}/u),
+            Punctuation: new CharClass("Punctuation", /\p{Punctuation}/u),
+            Control: new CharClass("Control", /\p{Control}/u),
+            SpaceSeparator: new CharClass("SpaceSeparator", /\p{Space_Separator}/u),
+            Separator: new CharClass("Separator", /\p{Separator}/u),
+            Yakumono: new CharClass("Yakumono", /[、。，．・：；？！…―ー〜～「」『』（）［］｛｝〈〉《》【】]/),
+            Whitespace: new CharClass("Whitespace", /\s/u),
+            InlineWhitespace: new CharClass("InlineWhitespace", /[\p{Zs}\t]/u),
+            LineBreak: new CharClass("LineBreak", /(?:\r\n|[\n\r\u0085\u2028\u2029])/u),
+        }
+        for (const cls of Object.values(CHAR_CLASS_REGISTRY)) {
+            Object.freeze(cls);
+        }
+        Object.freeze(CHAR_CLASS_REGISTRY);
 
         type CharMatcher = Atarabi.text.CharMatcher;
+        type CharMatchers = Atarabi.text.CharMatchers;
+
+        function createMatcher(matchers?: CharMatchers): (g: string) => boolean {
+            if (!matchers) {
+                return () => false;
+            }
+
+            let fns: ((g: string) => boolean)[] = [];
+
+            const push_fn = (matcher: CharMatcher) => {
+                if (typeof matcher === "string") {
+                    const charClass = CHAR_CLASS_REGISTRY[matcher];
+                    if (charClass) {
+                        fns.push(g => g !== null && charClass.test(g));
+                    }
+                    throw new Error(`Unknown CharClass Key: ${matcher}`);
+                } else if (CharClass.isCharClass(matcher)) {
+                    fns.push(g => g !== null && matcher.test(g));
+                } else if (matcher instanceof RegExp) {
+                    fns.push(g => g !== null && matcher.test(g));
+                }
+            };
+
+            if (Array.isArray(matchers)) {
+                matchers.forEach(when => push_fn(when));
+            } else {
+                push_fn(matchers);
+            }
+
+            if (fns.length === 0) {
+                return () => false;
+            } else if (fns.length === 1) {
+                return fns[0];
+            } else {
+                return g => fns.some(f => f(g));
+            }
+        }
 
         type RangeWithIndex = Range & { index: number; };
 
@@ -168,12 +139,15 @@
 
         function toRegExp(m: CharMatcher): RegExp | RegExp[] {
             if (typeof m === "string") {
-                const r = REGEX_BY_CLASS[m as CharClass];
+                const r = CHAR_CLASS_REGISTRY[m as CharClassKey];
                 if (!r) throw new Error(`Unsupported CharClass: ${m}`);
-                return r;
-            } else {
+                return r.re;
+            } else if (CharClass.isCharClass(m)) {
+                return (m as CharClass).re;
+            } else if (m instanceof RegExp) {
                 return m;
             }
+            throw new Error(`Unsupported CharClass: ${m}`);
         }
 
         function annotateByCharClassOverlay(text: string, charClass: CharMatcher | CharMatcher[]): Range[] {
@@ -206,8 +180,11 @@
 
         function annotateByCharClassExclusive(text: string, charClasses: (CharMatcher | CharMatcher[])[]): RangeWithIndex[] {
             const rules: RegExp[][] = charClasses.map(cls => {
-                if (Array.isArray(cls)) return cls.flatMap(toRegExp);
-                return [toRegExp(cls)].flat();
+                const res = Array.isArray(cls) ? cls.flatMap(toRegExp) : [toRegExp(cls)].flat();
+                return res.map(re0 => {
+                    const flags = re0.flags.includes("y") ? re0.flags : re0.flags + "y";
+                    return new RegExp(re0.source, flags);
+                });
             });
 
             const ranges: RangeWithIndex[] = [];
@@ -220,8 +197,9 @@
                 for (let idx = 0; idx < rules.length; idx++) {
                     const res = rules[idx];
                     for (const re of res) {
-                        const m = re.exec(text.slice(i));
-                        if (m && m.index === 0) {
+                        re.lastIndex = i;
+                        const m = re.exec(text);
+                        if (m) {
                             matchedIndex = idx;
                             matchLength = m[0].length;
                             break;
@@ -351,7 +329,7 @@
                 let result: RangeWithStyle[] = [];
                 const style: TextStyleOptions = {};
                 for (const field in this.style) {
-                    switch(field) {
+                    switch (field) {
                         case "direction":
                         case "firstLineIndent":
                         case "isEveryLineComposer":
@@ -552,12 +530,7 @@
         function shallowEqual(a: any, b: any): boolean {
             if (a === b) return true;
 
-            if (
-                typeof a !== "object" ||
-                typeof b !== "object" ||
-                a === null ||
-                b === null
-            ) {
+            if (typeof a !== "object" || typeof b !== "object" || a === null || b === null) {
                 return false;
             }
 
@@ -691,7 +664,7 @@
             }
             apply(property: TextProperty = thisLayer.text.sourceText, style: TextStyleProperty = property.style): TextStyleProperty {
                 style = this.applyLayout(style);
-                 for (const {from, count, style: st} of this.resolve(property.value)) {
+                for (const { from, count, style: st } of this.resolve(property.value)) {
                     style = applyStyle(style, st, from, count);
                 }
                 return style;
@@ -725,17 +698,17 @@
                 let result: RangeWithStyle[] = [];
                 if (this.doExclusive) {
                     const ranges = annotateByCharClassExclusive(text, this.charClasses);
-                    for (const {from, count, index} of ranges) {
+                    for (const { from, count, index } of ranges) {
                         if (index < 0) {
                             continue;
                         }
-                        result.push({from, count, style: this.styles[index]});
+                        result.push({ from, count, style: this.styles[index] });
                     }
                 } else {
                     for (let i = 0; i < this.charClasses.length; i++) {
                         const ranges = annotateByCharClassOverlay(text, this.charClasses[i]);
-                        for (const {from, count} of ranges) {
-                            result.push({from, count, style: this.styles[i]});
+                        for (const { from, count } of ranges) {
+                            result.push({ from, count, style: this.styles[i] });
                         }
                     }
                     result = normalizeRanges(result);
@@ -747,45 +720,17 @@
         type Range = Atarabi.text.Range;
         type PositionRuleItem = Atarabi.text.PositionRuleItem;
         type PositionRule = Atarabi.text.PositionRule;
-        type CountWhen = Atarabi.text.CountWhen;
-        type CountWhenPreset = Atarabi.text.CountWhenPreset;
+        type SkipWhen = Atarabi.text.SkipWhen;
 
-        const COUNT_WHEN_PRESETS: Record<CountWhenPreset, (g: string) => boolean> = {
-            all: () => true,
-            nonWhitespace: g => !/^\s$/u.test(g),
-            nonLineBreak: g => g !== "\n" && g !== "\r\n" && g !== "\r",
-            nonWhitespaceOrLineBreak: g => !/^\s$/u.test(g) && g !== "\n" && g !== "\r\n" && g !== "\r",
-        };
-
-        function makeCountPredicate(countWhen?: CountWhen): (g: string) => boolean {
-            if (!countWhen) {
-                return COUNT_WHEN_PRESETS.all;
-            }
-
-            if (typeof countWhen === "string") {
-                const preset = COUNT_WHEN_PRESETS[countWhen] ?? REGEX_BY_CLASS[countWhen];
-                if (!preset) {
-                    throw new Error(`Unknown countWhen preset: ${countWhen}`);
-                }
-                return preset;
-            }
-
-            if (countWhen instanceof RegExp) {
-                return g => countWhen.test(g);
-            }
-
-            return countWhen;
-        }
-
-        function convertGraphemeRangesForText(text: string, rules: PositionRule[], countWhen: CountWhen, line: number = 0): Range[][] {
+        function convertGraphemeRangesForText(text: string, rules: PositionRule[], skipWhen: SkipWhen, line: number = 0): Range[][] {
             const segmenter = new Intl.Segmenter(undefined, { granularity: "grapheme" });
             const graphemes = [...segmenter.segment(text)];
-            const countPredicate = makeCountPredicate(countWhen);
+            const skip = createMatcher(skipWhen);
             const logicalToPhysical: number[] = [];
             const utf16Offsets: number[] = [];
             let offset = 0;
             graphemes.forEach((seg, physicalIndex) => {
-                if (countPredicate(seg.segment)) {
+                if (!skip(seg.segment)) {
                     logicalToPhysical.push(physicalIndex);
                 }
                 utf16Offsets.push(offset);
@@ -840,13 +785,13 @@
             return result;
         }
 
-        function convertGraphemeRangesByLine(text: string, rules: PositionRule[], countWhen: CountWhen): Range[][] {
+        function convertGraphemeRangesByLine(text: string, rules: PositionRule[], skipWhen: SkipWhen): Range[][] {
             const lineRanges = annotateByLine(text);
             const result: Range[][] = rules.map(() => []);
             for (let i = 0; i < lineRanges.length; i++) {
                 const line = lineRanges[i];
                 const lineText = text.slice(line.from, line.from + line.count);
-                const perLine = convertGraphemeRangesForText(lineText, rules, countWhen, i);
+                const perLine = convertGraphemeRangesForText(lineText, rules, skipWhen, i);
                 for (let i = 0; i < perLine.length; i++) {
                     for (const r of perLine[i]) {
                         result[i].push({
@@ -868,7 +813,7 @@
             protected rules: PositionRule[] = [];
             protected styles: TextStyleOptions[] = [];
             protected doLine: boolean = false;
-            protected when: CountWhen = "all";
+            protected when: SkipWhen = null;
             protected get defaultRule(): PositionRule {
                 return { from: 0 };
             }
@@ -880,7 +825,7 @@
                 this.doLine = false;
                 return this;
             }
-            countWhen(when: Atarabi.text.CountWhen): this {
+            skipWhen(when: Atarabi.text.SkipWhen): this {
                 this.when = when;
                 return this;
             }
@@ -893,8 +838,8 @@
                 let result: RangeWithStyle[] = [];
                 const rangesList = this.doLine ? convertGraphemeRangesByLine(text, this.rules, this.when) : convertGraphemeRangesForText(text, this.rules, this.when);
                 for (let i = 0; i < rangesList.length; i++) {
-                    for (const {from, count} of rangesList[i]) {
-                        result.push({from, count, style: this.styles[i]});
+                    for (const { from, count } of rangesList[i]) {
+                        result.push({ from, count, style: this.styles[i] });
                     }
                 }
                 result = normalizeRanges(result);
@@ -1145,7 +1090,7 @@
             index: number;
             from: number;
             count: number;
-            includeLF: boolean;
+            includeLB: boolean;
         }
 
         function segmentText(text: string): { graphemes: Intl.SegmentData[]; lines: LineInfo[]; } {
@@ -1164,7 +1109,7 @@
                         index: lineIndex,
                         from: lineStart,
                         count,
-                        includeLF: true,
+                        includeLB: true,
                     });
                     lineIndex++;
                     lineStart = i + 1;
@@ -1177,7 +1122,7 @@
                     index: lineIndex,
                     from: lineStart,
                     count: graphemes.length - lineStart,
-                    includeLF: false,
+                    includeLB: false,
                 });
             }
 
@@ -1193,9 +1138,23 @@
                 line: 0,
                 indexInLine: 0,
                 lineLength: 0,
-                includeLF: false,
+                includeLB: false,
                 totalLines: 0,
                 iteration: 0,
+                graphemeAt: (index: number) => {
+                    if (index < 0 || index >= graphemes.length) return null;
+                    return graphemes[index].segment;
+                },
+                prev: () => null,
+                prevInLine: () => null,
+                next: () => null,
+                nextInLine: () => null,
+                peek: () => null,
+                peekInLine: () => null,
+                isFirst: () => false,
+                isFirstOfLine: () => false,
+                isLast: () => false,
+                isLastOfLine: () => false,
                 state: rule.initState(),
             }));
 
@@ -1212,17 +1171,110 @@
                     const g = seg.segment;
                     const from = seg.index;
                     const count = g.length;
+                    const indexInLine = globalIndex - lineInfo.from;
+                    const prev = (skipWhen: SkipWhen = null) => {
+                        const skip = createMatcher(skipWhen);
+                        for (let i = globalIndex - 1; i >= 0; i--) {
+                            if (skip(graphemes[i].segment)) {
+                                continue;
+                            }
+                            return graphemes[i].segment;
+                        }
+                        return null;
+                    };
+                    const prevInLine = (skipWhen: SkipWhen = null) => {
+                        const skip = createMatcher(skipWhen);
+                        for (let i = globalIndex - 1; i >= lineInfo.from; i--) {
+                            if (skip(graphemes[i].segment)) {
+                                continue;
+                            }
+                            return graphemes[i].segment;
+                        }
+                        return null;
+                    };
+                    const next = (skipWhen: SkipWhen = null) => {
+                        const skip = createMatcher(skipWhen);
+                        for (let i = globalIndex + 1; i < graphemes.length; i++) {
+                            if (skip(graphemes[i].segment)) {
+                                continue;
+                            }
+                            return graphemes[i].segment;
+                        }
+                        return null;
+                    };
+                    const nextInLine = (skipWhen: SkipWhen = null) => {
+                        const skip = createMatcher(skipWhen);
+                        const lineEnd = lineInfo.from + lineInfo.count;
+                        for (let i = globalIndex + 1; i < lineEnd; i++) {
+                            if (skip(graphemes[i].segment)) {
+                                continue;
+                            }
+                            return graphemes[i].segment;
+                        }
+                        return null;
+                    };
+                    const peek = (offset: number, skipWhen: SkipWhen = null) => {
+                        offset |= 0;
+                        if (offset === 0) return g;
+                        const skip = createMatcher(skipWhen);
+                        const step = offset < 0 ? -1 : 1;
+                        let remain = Math.abs(offset);
+                        for (let i = globalIndex + step; i >= 0 && i < graphemes.length; i += step) {
+                            if (skip(graphemes[i].segment)) continue;
+                            if (--remain === 0) return graphemes[i].segment;
+                        }
+                        return null;
+                    };
+                    const peekInLine = (offset: number, skipWhen: SkipWhen = null) => {
+                        offset |= 0;
+                        if (offset === 0) return g;
+                        const skip = createMatcher(skipWhen);
+                        const step = offset < 0 ? -1 : 1;
+                        const lineStart = lineInfo.from;
+                        const lineEnd = lineInfo.from + lineInfo.count;
+                        let remain = Math.abs(offset);
+                        for (let i = globalIndex + step; i >= lineStart && i < lineEnd; i += step) {
+                            if (skip(graphemes[i].segment)) continue;
+                            if (--remain === 0) return graphemes[i].segment;
+                        }
+                        return null;
+                    };
+                    const isFirst = (skipWhen: SkipWhen = null) => {
+                        if (globalIndex === 0) return true;
+                        return prev(skipWhen) === null;
+                    };
+                    const isLast = (skipWhen: SkipWhen = null) => {
+                        if (globalIndex === graphemes.length - 1) return true;
+                        return next(skipWhen) === null;
+                    };
+                    const isFirstOfLine = (skipWhen: SkipWhen = null) => {
+                        if (indexInLine === 0) return true;
+                        return prevInLine(skipWhen) === null;
+                    };
+                    const isLastOfLine = (skipWhen: SkipWhen = null) => {
+                        if (indexInLine === lineInfo.count - 1) return true;
+                        return nextInLine(skipWhen) === null;
+                    };
 
                     rules.forEach((rule, i) => {
                         const ctx = contexts[i];
                         ctx.index = globalIndex;
                         ctx.line = line;
-                        ctx.indexInLine = globalIndex - lineInfo.from;
-                        ctx.includeLF = lineInfo.includeLF;
+                        ctx.indexInLine = indexInLine;
+                        ctx.includeLB = lineInfo.includeLB;
                         ctx.lineLength = lineInfo.count;
                         ctx.totalLines = lines.length;
                         ctx.iteration = iter;
-
+                        ctx.prev = prev;
+                        ctx.prevInLine = prevInLine;
+                        ctx.next = next;
+                        ctx.nextInLine = nextInLine;
+                        ctx.peek = peek;
+                        ctx.peekInLine = peekInLine;
+                        ctx.isFirst = isFirst;
+                        ctx.isFirstOfLine = isFirstOfLine;
+                        ctx.isLast = isLast;
+                        ctx.isLastOfLine = isLastOfLine;
                         if (iter === iteration - 1 && rule.match(g, ctx)) {
                             results[i].push({ from, count });
                         }
@@ -1258,8 +1310,8 @@
                 const rangesList = processGrapheme(text, this.rules, this.iteration);
                 for (let i = 0; i < this.rules.length; i++) {
                     const ranges = rangesList[i];
-                    for (const {from, count} of ranges) {
-                        result.push({from, count, style: this.styles[i]});
+                    for (const { from, count } of ranges) {
+                        result.push({ from, count, style: this.styles[i] });
                     }
                 }
                 result = normalizeRanges(result);
@@ -1269,7 +1321,7 @@
 
         abstract class TextStyleApplier implements Atarabi.text.TextStyleApplier {
             apply(property: TextProperty = thisLayer.text.sourceText, style: TextStyleProperty = property.style): TextStyleProperty {
-                 for (const {from, count, style: st} of this.resolve(property.value)) {
+                for (const { from, count, style: st } of this.resolve(property.value)) {
                     style = applyStyle(style, st, from, count);
                 }
                 return style;
@@ -1315,9 +1367,23 @@
                     line: 0,
                     indexInLine: 0,
                     lineLength: 0,
-                    includeLF: false,
+                    includeLB: false,
                     totalLines: 0,
                     iteration: 0,
+                    graphemeAt: (index: number) => {
+                        if (index < 0 || index >= graphemes.length) return null;
+                        return graphemes[index].segment;
+                    },
+                    prev: () => null,
+                    prevInLine: () => null,
+                    next: () => null,
+                    nextInLine: () => null,
+                    peek: () => null,
+                    peekInLine: () => null,
+                    isFirst: () => false,
+                    isFirstOfLine: () => false,
+                    isLast: () => false,
+                    isLastOfLine: () => false,
                     state: this.options.initState(),
                 };
                 const fn = this.fn;
@@ -1335,18 +1401,111 @@
                         const g = seg.segment;
                         const from = seg.index;
                         const count = g.length;
+                        const indexInLine = globalIndex - lineInfo.from;
+                        const prev = (skipWhen: SkipWhen = null) => {
+                            const skip = createMatcher(skipWhen);
+                            for (let i = globalIndex - 1; i >= 0; i--) {
+                                if (skip(graphemes[i].segment)) {
+                                    continue;
+                                }
+                                return graphemes[i].segment;
+                            }
+                            return null;
+                        };
+                        const prevInLine = (skipWhen: SkipWhen = null) => {
+                            const skip = createMatcher(skipWhen);
+                            for (let i = globalIndex - 1; i >= lineInfo.from; i--) {
+                                if (skip(graphemes[i].segment)) {
+                                    continue;
+                                }
+                                return graphemes[i].segment;
+                            }
+                            return null;
+                        };
+                        const next = (skipWhen: SkipWhen = null) => {
+                            const skip = createMatcher(skipWhen);
+                            for (let i = globalIndex + 1; i < graphemes.length; i++) {
+                                if (skip(graphemes[i].segment)) {
+                                    continue;
+                                }
+                                return graphemes[i].segment;
+                            }
+                            return null;
+                        };
+                        const nextInLine = (skipWhen: SkipWhen = null) => {
+                            const skip = createMatcher(skipWhen);
+                            const lineEnd = lineInfo.from + lineInfo.count;
+                            for (let i = globalIndex + 1; i < lineEnd; i++) {
+                                if (skip(graphemes[i].segment)) {
+                                    continue;
+                                }
+                                return graphemes[i].segment;
+                            }
+                            return null;
+                        };
+                        const peek = (offset: number, skipWhen: SkipWhen = null) => {
+                            offset |= 0;
+                            if (offset === 0) return g;
+                            const skip = createMatcher(skipWhen);
+                            const step = offset < 0 ? -1 : 1;
+                            let remain = Math.abs(offset);
+                            for (let i = globalIndex + step; i >= 0 && i < graphemes.length; i += step) {
+                                if (skip(graphemes[i].segment)) continue;
+                                if (--remain === 0) return graphemes[i].segment;
+                            }
+                            return null;
+                        };
+                        const peekInLine = (offset: number, skipWhen: SkipWhen = null) => {
+                            offset |= 0;
+                            if (offset === 0) return g;
+                            const skip = createMatcher(skipWhen);
+                            const step = offset < 0 ? -1 : 1;
+                            const lineStart = lineInfo.from;
+                            const lineEnd = lineInfo.from + lineInfo.count;
+                            let remain = Math.abs(offset);
+                            for (let i = globalIndex + step; i >= lineStart && i < lineEnd; i += step) {
+                                if (skip(graphemes[i].segment)) continue;
+                                if (--remain === 0) return graphemes[i].segment;
+                            }
+                            return null;
+                        };
+                        const isFirst = (skipWhen: SkipWhen = null) => {
+                            if (globalIndex === 0) return true;
+                            return prev(skipWhen) === null;
+                        };
+                        const isLast = (skipWhen: SkipWhen = null) => {
+                            if (globalIndex === graphemes.length - 1) return true;
+                            return next(skipWhen) === null;
+                        };
+                        const isFirstOfLine = (skipWhen: SkipWhen = null) => {
+                            if (indexInLine === 0) return true;
+                            return prevInLine(skipWhen) === null;
+                        };
+                        const isLastOfLine = (skipWhen: SkipWhen = null) => {
+                            if (indexInLine === lineInfo.count - 1) return true;
+                            return nextInLine(skipWhen) === null;
+                        };
 
                         ctx.index = globalIndex;
                         ctx.line = line;
-                        ctx.indexInLine = globalIndex - lineInfo.from;
-                        ctx.includeLF = lineInfo.includeLF;
+                        ctx.indexInLine = indexInLine;
+                        ctx.includeLB = lineInfo.includeLB;
                         ctx.lineLength = lineInfo.count;
                         ctx.totalLines = lines.length;
                         ctx.iteration = iter;
-
+                        ctx.prev = prev;
+                        ctx.prevInLine = prevInLine;
+                        ctx.next = next;
+                        ctx.nextInLine = nextInLine;
+                        ctx.peek = peek;
+                        ctx.peekInLine = peekInLine;
+                        ctx.isFirst = isFirst;
+                        ctx.isFirstOfLine = isFirstOfLine;
+                        ctx.isLast = isLast;
+                        ctx.isLastOfLine = isLastOfLine;
                         const ret = fn(g, ctx);
                         if (iter === iteration - 1 && ret) {
-                            result.push({from, count, style: ret});
+                            result.push({ from, count, style: ret });
                         }
                     });
                 }
@@ -1367,7 +1526,7 @@
             }
             apply(property: TextProperty = thisLayer.text.sourceText, style: TextStyleProperty = property.style): TextStyleProperty {
                 style = applyTextLayout(style, this.layoutOptions);
-                 for (const {from, count, style: st} of this.resolve(property.value)) {
+                for (const { from, count, style: st } of this.resolve(property.value)) {
                     style = applyStyle(style, st, from, count);
                 }
                 return style;
@@ -1386,7 +1545,8 @@
         }
 
         const lib = {
-            CharClass,
+            CharClass: CHAR_CLASS_REGISTRY,
+            createMatcher,
             TextStyle: {
                 all: (style: TextLayoutOptions | TextStyleOptions) => new AllTextStyleBuilder(style),
                 // static

@@ -4,134 +4,107 @@
         if (!force && LIB.text) {
             return LIB.text;
         }
-        const REGEX_BY_CLASS = (() => {
-            const Hiragana = /\p{Script=Hiragana}/u;
-            const Katakana = /\p{Script=Katakana}/u;
-            const Japanese = /[\p{Script=Hiragana}\p{Script=Katakana}\p{Script=Han}ー〆]/u;
-            const Han = /\p{Script=Han}/u;
-            const Hangul = /\p{Script=Hangul}/u;
-            const Latin = /\p{Script=Latin}/u;
-            const Greek = /\p{Script=Greek}/u;
-            const Cyrillic = /\p{Script=Cyrillic}/u;
-            const Arabic = /\p{Script=Arabic}/u;
-            const Hebrew = /\p{Script=Hebrew}/u;
-            const Armenian = /\p{Script=Armenian}/u;
-            const Georgian = /\p{Script=Georgian}/u;
-            const Devanagari = /\p{Script=Devanagari}/u;
-            const Bengali = /\p{Script=Bengali}/u;
-            const Gurmukhi = /\p{Script=Gurmukhi}/u;
-            const Gujarati = /\p{Script=Gujarati}/u;
-            const Oriya = /\p{Script=Oriya}/u;
-            const Tamil = /\p{Script=Tamil}/u;
-            const Telugu = /\p{Script=Telugu}/u;
-            const Kannada = /\p{Script=Kannada}/u;
-            const Malayalam = /\p{Script=Malayalam}/u;
-            const Sinhala = /\p{Script=Sinhala}/u;
-            const Thai = /\p{Script=Thai}/u;
-            const Lao = /\p{Script=Lao}/u;
-            const Khmer = /\p{Script=Khmer}/u;
-            const Myanmar = /\p{Script=Myanmar}/u;
-            const Ethiopic = /\p{Script=Ethiopic}/u;
-            const Lowercase = /\p{Lowercase_Letter}/u;
-            const Uppercase = /\p{Uppercase_Letter}/u;
-            const Modifier = /\p{Modifier_Letter}/u;
-            const Alphabetic = /\p{Alphabetic}/u;
-            const Letter = /\p{Letter}/u;
-            const Decimal = /\p{Decimal_Number}/u;
-            const Number = /\p{Number}/u;
-            const Emoji = /\p{Extended_Pictographic}/u;
-            const Symbol = /\p{Symbol}/u;
-            const Punctuation = /\p{Punctuation}/u;
-            const Yakumono = /[、。，．・：；？！…―ー〜～「」『』（）［］｛｝〈〉《》【】]/;
-            const Space = /\p{Space_Separator}/u;
-            const Separator = /\p{Separator}/u;
-            return {
-                Hiragana,
-                Katakana,
-                Kanji: Han,
-                Japanese,
-                Han,
-                Hangul,
-                Latin,
-                Greek,
-                Cyrillic,
-                Arabic,
-                Hebrew,
-                Armenian,
-                Georgian,
-                Devanagari,
-                Bengali,
-                Gurmukhi,
-                Gujarati,
-                Oriya,
-                Tamil,
-                Telugu,
-                Kannada,
-                Malayalam,
-                Sinhala,
-                Thai,
-                Lao,
-                Khmer,
-                Myanmar,
-                Ethiopic,
-                Lowercase,
-                Uppercase,
-                Modifier,
-                Alphabetic,
-                Letter,
-                Decimal,
-                Number,
-                Emoji,
-                Symbol,
-                Punctuation,
-                Yakumono,
-                Space,
-                Separator,
-            };
-        })();
-        const CharClass = {
-            Hiragana: "Hiragana",
-            Katakana: "Katakana",
-            Kanji: "Kanji",
-            Japanese: "Japanese",
-            Han: "Han",
-            Hangul: "Hangul",
-            Latin: "Latin",
-            Greek: "Greek",
-            Cyrillic: "Cyrillic",
-            Arabic: "Arabic",
-            Hebrew: "Hebrew",
-            Armenian: "Armenian",
-            Georgian: "Georgian",
-            Devanagari: "Devanagari",
-            Bengali: "Bengali",
-            Gurmukhi: "Gurmukhi",
-            Gujarati: "Gujarati",
-            Oriya: "Oriya",
-            Tamil: "Tamil",
-            Telugu: "Telugu",
-            Kannada: "Kannada",
-            Malayalam: "Malayalam",
-            Sinhala: "Sinhala",
-            Thai: "Thai",
-            Lao: "Lao",
-            Khmer: "Khmer",
-            Myanmar: "Myanmar",
-            Ethiopic: "Ethiopic",
-            Lowercase: "Lowercase",
-            Uppercase: "Uppercase",
-            Modifier: "Modifier",
-            Alphabetic: "Alphabetic",
-            Letter: "Letter",
-            Decimal: "Decimal",
-            Number: "Number",
-            Emoji: "Emoji",
-            Symbol: "Symbol",
-            Punctuation: "Punctuation",
-            Yakumono: "Yakumono",
-            Space: "Space",
-            Separator: "Separator",
+        class CharClass {
+            _name;
+            _re;
+            constructor(_name, re) {
+                this._name = _name;
+                this._re = Object.freeze(new RegExp(re.source, re.flags));
+            }
+            get name() { return this._name; }
+            get re() { return this._re; }
+            test(g) { return this._re.test(g); }
+            static isCharClass(v) {
+                return v instanceof CharClass;
+            }
+        }
+        const CHAR_CLASS_REGISTRY = {
+            Hiragana: new CharClass("Hiragana", /\p{Script=Hiragana}/u),
+            Katakana: new CharClass("Hiragana", /\p{Script=Katakana}/u),
+            Kanji: new CharClass("Kanji", /\p{Script=Han}/u),
+            Japanese: new CharClass("Hiragana", /[\p{Script=Hiragana}\p{Script=Katakana}\p{Script=Han}ー〆]/u),
+            Han: new CharClass("Han", /\p{Script=Han}/u),
+            Hangul: new CharClass("Hangul", /\p{Script=Hangul}/u),
+            Latin: new CharClass("Latin", /\p{Script=Latin}/u),
+            Greek: new CharClass("Greek", /\p{Script=Greek}/u),
+            Cyrillic: new CharClass("Cyrillic", /\p{Script=Cyrillic}/u),
+            Arabic: new CharClass("Arabic", /\p{Script=Arabic}/u),
+            Hebrew: new CharClass("Hebrew", /\p{Script=Hebrew}/u),
+            Armenian: new CharClass("Armenian", /\p{Script=Armenian}/u),
+            Georgian: new CharClass("Georgian", /\p{Script=Georgian}/u),
+            Devanagari: new CharClass("Devanagari", /\p{Script=Devanagari}/u),
+            Bengali: new CharClass("Bengali", /\p{Script=Bengali}/u),
+            Gurmukhi: new CharClass("Gurmukhi", /\p{Script=Gurmukhi}/u),
+            Gujarati: new CharClass("Gujarati", /\p{Script=Gujarati}/u),
+            Oriya: new CharClass("Oriya", /\p{Script=Oriya}/u),
+            Tamil: new CharClass("Tamil", /\p{Script=Tamil}/u),
+            Telugu: new CharClass("Telugu", /\p{Script=Telugu}/u),
+            Kannada: new CharClass("Kannada", /\p{Script=Kannada}/u),
+            Malayalam: new CharClass("Malayalam", /\p{Script=Malayalam}/u),
+            Sinhala: new CharClass("Sinhala", /\p{Script=Sinhala}/u),
+            Thai: new CharClass("Thai", /\p{Script=Thai}/u),
+            Lao: new CharClass("Lao", /\p{Script=Lao}/u),
+            Khmer: new CharClass("Khmer", /\p{Script=Khmer}/u),
+            Myanmar: new CharClass("Myanmar", /\p{Script=Myanmar}/u),
+            Ethiopic: new CharClass("Ethiopic", /\p{Script=Ethiopic}/u),
+            LowercaseLetter: new CharClass("LowercaseLetter", /\p{Lowercase_Letter}/u),
+            UppercaseLetter: new CharClass("UppercaseLetter", /\p{Uppercase_Letter}/u),
+            ModifierLetter: new CharClass("ModifierLetter", /\p{Modifier_Letter}/u),
+            Alphabetic: new CharClass("Alphabetic", /\p{Alphabetic}/u),
+            Letter: new CharClass("Letter", /\p{Letter}/u),
+            DecimalNumber: new CharClass("DecimalNumber", /\p{Decimal_Number}/u),
+            Number: new CharClass("Number", /\p{Number}/u),
+            Emoji: new CharClass("Emoji", /\p{Extended_Pictographic}/u),
+            Symbol: new CharClass("Symbol", /\p{Symbol}/u),
+            Punctuation: new CharClass("Punctuation", /\p{Punctuation}/u),
+            Control: new CharClass("Control", /\p{Control}/u),
+            SpaceSeparator: new CharClass("SpaceSeparator", /\p{Space_Separator}/u),
+            Separator: new CharClass("Separator", /\p{Separator}/u),
+            Yakumono: new CharClass("Yakumono", /[、。，．・：；？！…―ー〜～「」『』（）［］｛｝〈〉《》【】]/),
+            Whitespace: new CharClass("Whitespace", /\s/u),
+            InlineWhitespace: new CharClass("InlineWhitespace", /[\p{Zs}\t]/u),
+            LineBreak: new CharClass("LineBreak", /(?:\r\n|[\n\r\u0085\u2028\u2029])/u),
         };
+        for (const cls of Object.values(CHAR_CLASS_REGISTRY)) {
+            Object.freeze(cls);
+        }
+        Object.freeze(CHAR_CLASS_REGISTRY);
+        function createMatcher(matchers) {
+            if (!matchers) {
+                return () => false;
+            }
+            let fns = [];
+            const push_fn = (matcher) => {
+                if (typeof matcher === "string") {
+                    const charClass = CHAR_CLASS_REGISTRY[matcher];
+                    if (charClass) {
+                        fns.push(g => g !== null && charClass.test(g));
+                    }
+                    throw new Error(`Unknown CharClass Key: ${matcher}`);
+                }
+                else if (CharClass.isCharClass(matcher)) {
+                    fns.push(g => g !== null && matcher.test(g));
+                }
+                else if (matcher instanceof RegExp) {
+                    fns.push(g => g !== null && matcher.test(g));
+                }
+            };
+            if (Array.isArray(matchers)) {
+                matchers.forEach(when => push_fn(when));
+            }
+            else {
+                push_fn(matchers);
+            }
+            if (fns.length === 0) {
+                return () => false;
+            }
+            else if (fns.length === 1) {
+                return fns[0];
+            }
+            else {
+                return g => fns.some(f => f(g));
+            }
+        }
         function mergeRanges(ranges) {
             if (ranges.length === 0)
                 return [];
@@ -153,14 +126,18 @@
         }
         function toRegExp(m) {
             if (typeof m === "string") {
-                const r = REGEX_BY_CLASS[m];
+                const r = CHAR_CLASS_REGISTRY[m];
                 if (!r)
                     throw new Error(`Unsupported CharClass: ${m}`);
-                return r;
+                return r.re;
             }
-            else {
+            else if (CharClass.isCharClass(m)) {
+                return m.re;
+            }
+            else if (m instanceof RegExp) {
                 return m;
             }
+            throw new Error(`Unsupported CharClass: ${m}`);
         }
         function annotateByCharClassOverlay(text, charClass) {
             const res = (() => {
@@ -187,9 +164,11 @@
         }
         function annotateByCharClassExclusive(text, charClasses) {
             const rules = charClasses.map(cls => {
-                if (Array.isArray(cls))
-                    return cls.flatMap(toRegExp);
-                return [toRegExp(cls)].flat();
+                const res = Array.isArray(cls) ? cls.flatMap(toRegExp) : [toRegExp(cls)].flat();
+                return res.map(re0 => {
+                    const flags = re0.flags.includes("y") ? re0.flags : re0.flags + "y";
+                    return new RegExp(re0.source, flags);
+                });
             });
             const ranges = [];
             let i = 0;
@@ -199,8 +178,9 @@
                 for (let idx = 0; idx < rules.length; idx++) {
                     const res = rules[idx];
                     for (const re of res) {
-                        const m = re.exec(text.slice(i));
-                        if (m && m.index === 0) {
+                        re.lastIndex = i;
+                        const m = re.exec(text);
+                        if (m) {
                             matchedIndex = idx;
                             matchLength = m[0].length;
                             break;
@@ -505,10 +485,7 @@
         function shallowEqual(a, b) {
             if (a === b)
                 return true;
-            if (typeof a !== "object" ||
-                typeof b !== "object" ||
-                a === null ||
-                b === null) {
+            if (typeof a !== "object" || typeof b !== "object" || a === null || b === null) {
                 return false;
             }
             const ka = Object.keys(a);
@@ -669,37 +646,15 @@
                 return result;
             }
         }
-        const COUNT_WHEN_PRESETS = {
-            all: () => true,
-            nonWhitespace: g => !/^\s$/u.test(g),
-            nonLineBreak: g => g !== "\n" && g !== "\r\n" && g !== "\r",
-            nonWhitespaceOrLineBreak: g => !/^\s$/u.test(g) && g !== "\n" && g !== "\r\n" && g !== "\r",
-        };
-        function makeCountPredicate(countWhen) {
-            if (!countWhen) {
-                return COUNT_WHEN_PRESETS.all;
-            }
-            if (typeof countWhen === "string") {
-                const preset = COUNT_WHEN_PRESETS[countWhen] ?? REGEX_BY_CLASS[countWhen];
-                if (!preset) {
-                    throw new Error(`Unknown countWhen preset: ${countWhen}`);
-                }
-                return preset;
-            }
-            if (countWhen instanceof RegExp) {
-                return g => countWhen.test(g);
-            }
-            return countWhen;
-        }
-        function convertGraphemeRangesForText(text, rules, countWhen, line = 0) {
+        function convertGraphemeRangesForText(text, rules, skipWhen, line = 0) {
             const segmenter = new Intl.Segmenter(undefined, { granularity: "grapheme" });
             const graphemes = [...segmenter.segment(text)];
-            const countPredicate = makeCountPredicate(countWhen);
+            const skip = createMatcher(skipWhen);
             const logicalToPhysical = [];
             const utf16Offsets = [];
             let offset = 0;
             graphemes.forEach((seg, physicalIndex) => {
-                if (countPredicate(seg.segment)) {
+                if (!skip(seg.segment)) {
                     logicalToPhysical.push(physicalIndex);
                 }
                 utf16Offsets.push(offset);
@@ -750,13 +705,13 @@
             }
             return result;
         }
-        function convertGraphemeRangesByLine(text, rules, countWhen) {
+        function convertGraphemeRangesByLine(text, rules, skipWhen) {
             const lineRanges = annotateByLine(text);
             const result = rules.map(() => []);
             for (let i = 0; i < lineRanges.length; i++) {
                 const line = lineRanges[i];
                 const lineText = text.slice(line.from, line.from + line.count);
-                const perLine = convertGraphemeRangesForText(lineText, rules, countWhen, i);
+                const perLine = convertGraphemeRangesForText(lineText, rules, skipWhen, i);
                 for (let i = 0; i < perLine.length; i++) {
                     for (const r of perLine[i]) {
                         result[i].push({
@@ -775,7 +730,7 @@
             rules = [];
             styles = [];
             doLine = false;
-            when = "all";
+            when = null;
             get defaultRule() {
                 return { from: 0 };
             }
@@ -787,7 +742,7 @@
                 this.doLine = false;
                 return this;
             }
-            countWhen(when) {
+            skipWhen(when) {
                 this.when = when;
                 return this;
             }
@@ -1028,7 +983,7 @@
                         index: lineIndex,
                         from: lineStart,
                         count,
-                        includeLF: true,
+                        includeLB: true,
                     });
                     lineIndex++;
                     lineStart = i + 1;
@@ -1040,7 +995,7 @@
                     index: lineIndex,
                     from: lineStart,
                     count: graphemes.length - lineStart,
-                    includeLF: false,
+                    includeLB: false,
                 });
             }
             return { graphemes, lines };
@@ -1053,9 +1008,24 @@
                 line: 0,
                 indexInLine: 0,
                 lineLength: 0,
-                includeLF: false,
+                includeLB: false,
                 totalLines: 0,
                 iteration: 0,
+                graphemeAt: (index) => {
+                    if (index < 0 || index >= graphemes.length)
+                        return null;
+                    return graphemes[index].segment;
+                },
+                prev: () => null,
+                prevInLine: () => null,
+                next: () => null,
+                nextInLine: () => null,
+                peek: () => null,
+                peekInLine: () => null,
+                isFirst: () => false,
+                isFirstOfLine: () => false,
+                isLast: () => false,
+                isLastOfLine: () => false,
                 state: rule.initState(),
             }));
             for (let iter = 0; iter < iteration; iter++) {
@@ -1069,15 +1039,119 @@
                     const g = seg.segment;
                     const from = seg.index;
                     const count = g.length;
+                    const indexInLine = globalIndex - lineInfo.from;
+                    const prev = (skipWhen = null) => {
+                        const skip = createMatcher(skipWhen);
+                        for (let i = globalIndex - 1; i >= 0; i--) {
+                            if (skip(graphemes[i].segment)) {
+                                continue;
+                            }
+                            return graphemes[i].segment;
+                        }
+                        return null;
+                    };
+                    const prevInLine = (skipWhen = null) => {
+                        const skip = createMatcher(skipWhen);
+                        for (let i = globalIndex - 1; i >= lineInfo.from; i--) {
+                            if (skip(graphemes[i].segment)) {
+                                continue;
+                            }
+                            return graphemes[i].segment;
+                        }
+                        return null;
+                    };
+                    const next = (skipWhen = null) => {
+                        const skip = createMatcher(skipWhen);
+                        for (let i = globalIndex + 1; i < graphemes.length; i++) {
+                            if (skip(graphemes[i].segment)) {
+                                continue;
+                            }
+                            return graphemes[i].segment;
+                        }
+                        return null;
+                    };
+                    const nextInLine = (skipWhen = null) => {
+                        const skip = createMatcher(skipWhen);
+                        const lineEnd = lineInfo.from + lineInfo.count;
+                        for (let i = globalIndex + 1; i < lineEnd; i++) {
+                            if (skip(graphemes[i].segment)) {
+                                continue;
+                            }
+                            return graphemes[i].segment;
+                        }
+                        return null;
+                    };
+                    const peek = (offset, skipWhen = null) => {
+                        offset |= 0;
+                        if (offset === 0)
+                            return g;
+                        const skip = createMatcher(skipWhen);
+                        const step = offset < 0 ? -1 : 1;
+                        let remain = Math.abs(offset);
+                        for (let i = globalIndex + step; i >= 0 && i < graphemes.length; i += step) {
+                            if (skip(graphemes[i].segment))
+                                continue;
+                            if (--remain === 0)
+                                return graphemes[i].segment;
+                        }
+                        return null;
+                    };
+                    const peekInLine = (offset, skipWhen = null) => {
+                        offset |= 0;
+                        if (offset === 0)
+                            return g;
+                        const skip = createMatcher(skipWhen);
+                        const step = offset < 0 ? -1 : 1;
+                        const lineStart = lineInfo.from;
+                        const lineEnd = lineInfo.from + lineInfo.count;
+                        let remain = Math.abs(offset);
+                        for (let i = globalIndex + step; i >= lineStart && i < lineEnd; i += step) {
+                            if (skip(graphemes[i].segment))
+                                continue;
+                            if (--remain === 0)
+                                return graphemes[i].segment;
+                        }
+                        return null;
+                    };
+                    const isFirst = (skipWhen = null) => {
+                        if (globalIndex === 0)
+                            return true;
+                        return prev(skipWhen) === null;
+                    };
+                    const isLast = (skipWhen = null) => {
+                        if (globalIndex === graphemes.length - 1)
+                            return true;
+                        return next(skipWhen) === null;
+                    };
+                    const isFirstOfLine = (skipWhen = null) => {
+                        if (indexInLine === 0)
+                            return true;
+                        return prevInLine(skipWhen) === null;
+                    };
+                    const isLastOfLine = (skipWhen = null) => {
+                        if (indexInLine === lineInfo.count - 1)
+                            return true;
+                        return nextInLine(skipWhen) === null;
+                    };
                     rules.forEach((rule, i) => {
                         const ctx = contexts[i];
                         ctx.index = globalIndex;
                         ctx.line = line;
-                        ctx.indexInLine = globalIndex - lineInfo.from;
-                        ctx.includeLF = lineInfo.includeLF;
+                        ctx.indexInLine = indexInLine;
+                        ctx.includeLB = lineInfo.includeLB;
                         ctx.lineLength = lineInfo.count;
                         ctx.totalLines = lines.length;
                         ctx.iteration = iter;
+                        ctx.prev = prev;
+                        ctx.prevInLine = prevInLine;
+                        ctx.next = next;
+                        ctx.nextInLine = nextInLine;
+                        ctx.peek = peek;
+                        ctx.peekInLine = peekInLine;
+                        ctx.isFirst = isFirst;
+                        ctx.isFirstOfLine = isFirstOfLine;
+                        ctx.isLast = isLast;
+                        ctx.isLastOfLine = isLastOfLine;
                         if (iter === iteration - 1 && rule.match(g, ctx)) {
                             results[i].push({ from, count });
                         }
@@ -1164,9 +1238,24 @@
                     line: 0,
                     indexInLine: 0,
                     lineLength: 0,
-                    includeLF: false,
+                    includeLB: false,
                     totalLines: 0,
                     iteration: 0,
+                    graphemeAt: (index) => {
+                        if (index < 0 || index >= graphemes.length)
+                            return null;
+                        return graphemes[index].segment;
+                    },
+                    prev: () => null,
+                    prevInLine: () => null,
+                    next: () => null,
+                    nextInLine: () => null,
+                    peek: () => null,
+                    peekInLine: () => null,
+                    isFirst: () => false,
+                    isFirstOfLine: () => false,
+                    isLast: () => false,
+                    isLastOfLine: () => false,
                     state: this.options.initState(),
                 };
                 const fn = this.fn;
@@ -1182,13 +1271,117 @@
                         const g = seg.segment;
                         const from = seg.index;
                         const count = g.length;
+                        const indexInLine = globalIndex - lineInfo.from;
+                        const prev = (skipWhen = null) => {
+                            const skip = createMatcher(skipWhen);
+                            for (let i = globalIndex - 1; i >= 0; i--) {
+                                if (skip(graphemes[i].segment)) {
+                                    continue;
+                                }
+                                return graphemes[i].segment;
+                            }
+                            return null;
+                        };
+                        const prevInLine = (skipWhen = null) => {
+                            const skip = createMatcher(skipWhen);
+                            for (let i = globalIndex - 1; i >= lineInfo.from; i--) {
+                                if (skip(graphemes[i].segment)) {
+                                    continue;
+                                }
+                                return graphemes[i].segment;
+                            }
+                            return null;
+                        };
+                        const next = (skipWhen = null) => {
+                            const skip = createMatcher(skipWhen);
+                            for (let i = globalIndex + 1; i < graphemes.length; i++) {
+                                if (skip(graphemes[i].segment)) {
+                                    continue;
+                                }
+                                return graphemes[i].segment;
+                            }
+                            return null;
+                        };
+                        const nextInLine = (skipWhen = null) => {
+                            const skip = createMatcher(skipWhen);
+                            const lineEnd = lineInfo.from + lineInfo.count;
+                            for (let i = globalIndex + 1; i < lineEnd; i++) {
+                                if (skip(graphemes[i].segment)) {
+                                    continue;
+                                }
+                                return graphemes[i].segment;
+                            }
+                            return null;
+                        };
+                        const peek = (offset, skipWhen = null) => {
+                            offset |= 0;
+                            if (offset === 0)
+                                return g;
+                            const skip = createMatcher(skipWhen);
+                            const step = offset < 0 ? -1 : 1;
+                            let remain = Math.abs(offset);
+                            for (let i = globalIndex + step; i >= 0 && i < graphemes.length; i += step) {
+                                if (skip(graphemes[i].segment))
+                                    continue;
+                                if (--remain === 0)
+                                    return graphemes[i].segment;
+                            }
+                            return null;
+                        };
+                        const peekInLine = (offset, skipWhen = null) => {
+                            offset |= 0;
+                            if (offset === 0)
+                                return g;
+                            const skip = createMatcher(skipWhen);
+                            const step = offset < 0 ? -1 : 1;
+                            const lineStart = lineInfo.from;
+                            const lineEnd = lineInfo.from + lineInfo.count;
+                            let remain = Math.abs(offset);
+                            for (let i = globalIndex + step; i >= lineStart && i < lineEnd; i += step) {
+                                if (skip(graphemes[i].segment))
+                                    continue;
+                                if (--remain === 0)
+                                    return graphemes[i].segment;
+                            }
+                            return null;
+                        };
+                        const isFirst = (skipWhen = null) => {
+                            if (globalIndex === 0)
+                                return true;
+                            return prev(skipWhen) === null;
+                        };
+                        const isLast = (skipWhen = null) => {
+                            if (globalIndex === graphemes.length - 1)
+                                return true;
+                            return next(skipWhen) === null;
+                        };
+                        const isFirstOfLine = (skipWhen = null) => {
+                            if (indexInLine === 0)
+                                return true;
+                            return prevInLine(skipWhen) === null;
+                        };
+                        const isLastOfLine = (skipWhen = null) => {
+                            if (indexInLine === lineInfo.count - 1)
+                                return true;
+                            return nextInLine(skipWhen) === null;
+                        };
                         ctx.index = globalIndex;
                         ctx.line = line;
-                        ctx.indexInLine = globalIndex - lineInfo.from;
-                        ctx.includeLF = lineInfo.includeLF;
+                        ctx.indexInLine = indexInLine;
+                        ctx.includeLB = lineInfo.includeLB;
                         ctx.lineLength = lineInfo.count;
                         ctx.totalLines = lines.length;
                         ctx.iteration = iter;
+                        ctx.prev = prev;
+                        ctx.prevInLine = prevInLine;
+                        ctx.next = next;
+                        ctx.nextInLine = nextInLine;
+                        ctx.peek = peek;
+                        ctx.peekInLine = peekInLine;
+                        ctx.isFirst = isFirst;
+                        ctx.isFirstOfLine = isFirstOfLine;
+                        ctx.isLast = isLast;
+                        ctx.isLastOfLine = isLastOfLine;
                         const ret = fn(g, ctx);
                         if (iter === iteration - 1 && ret) {
                             result.push({ from, count, style: ret });
@@ -1230,7 +1423,8 @@
             }
         }
         const lib = {
-            CharClass,
+            CharClass: CHAR_CLASS_REGISTRY,
+            createMatcher,
             TextStyle: {
                 all: (style) => new AllTextStyleBuilder(style),
                 // static

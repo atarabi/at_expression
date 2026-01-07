@@ -1,8 +1,11 @@
 export { };
 
-const { TextStyle } = footage("@text.jsx").sourceData.load();
+const { CharClass, createMatcher, TextStyle } = footage("@text.jsx").sourceData.load();
+
+const matcher = createMatcher([CharClass.InlineWhitespace, CharClass.Punctuation]);
 
 TextStyle.byGrapheme()
-    .rule((g, ctx) => (ctx.index + ctx.line) % 2 === 0, { applyFill: false, applyStroke: true, strokeColor: [0.2, 0.8, 0.7], strokeWidth: 3 })
-    .rule((g, ctx) => (ctx.index + ctx.line )% 2 === 1, { applyFill: true, applyStroke: false, fillColor: [0.8, 0.5, 0.3] })
+    .rule((g, ctx) => {
+        return (ctx.isFirst() || matcher(ctx.prev()) && !matcher(g));
+    }, { applyFill: false, applyStroke: true, strokeColor: [0.2, 0.8, 0.7], strokeWidth: 3 })
     .apply();

@@ -316,69 +316,80 @@ declare namespace Atarabi {
 
         interface Lib {
             CharClass: CharClassMap;
+            createMatcher: typeof createMatcher;
             TextStyle: TextStyleRules;
         }
 
-        interface CharClassMap {
+        type CharClassKey =
             // --- East Asia ---
-            readonly Hiragana: "Hiragana";
-            readonly Katakana: "Katakana";
-            readonly Kanji: "Kanji"; // =Han
-            readonly Japanese: "Japanese",
-            readonly Han: "Han";
-            readonly Hangul: "Hangul";
-
+            | "Hiragana"
+            | "Katakana"
+            | "Kanji" // =Han
+            | "Japanese"
+            | "Han"
+            | "Hangul"
             // --- Latin / European ---
-            readonly Latin: "Latin";
-            readonly Greek: "Greek";
-            readonly Cyrillic: "Cyrillic";
-
+            | "Latin"
+            | "Greek"
+            | "Cyrillic"
             // --- Middle East / Caucasus ---
-            readonly Arabic: "Arabic";
-            readonly Hebrew: "Hebrew";
-            readonly Armenian: "Armenian";
-            readonly Georgian: "Georgian";
-
+            | "Arabic"
+            | "Hebrew"
+            | "Armenian"
+            | "Georgian"
             // --- South Asia ---
-            readonly Devanagari: "Devanagari";
-            readonly Bengali: "Bengali";
-            readonly Gurmukhi: "Gurmukhi";
-            readonly Gujarati: "Gujarati";
-            readonly Oriya: "Oriya";
-            readonly Tamil: "Tamil";
-            readonly Telugu: "Telugu";
-            readonly Kannada: "Kannada";
-            readonly Malayalam: "Malayalam";
-            readonly Sinhala: "Sinhala";
-
+            | "Devanagari"
+            | "Bengali"
+            | "Gurmukhi"
+            | "Gujarati"
+            | "Oriya"
+            | "Tamil"
+            | "Telugu"
+            | "Kannada"
+            | "Malayalam"
+            | "Sinhala"
             // --- Southeast Asia ---
-            readonly Thai: "Thai";
-            readonly Lao: "Lao";
-            readonly Khmer: "Khmer";
-            readonly Myanmar: "Myanmar";
-
+            | "Thai"
+            | "Lao"
+            | "Khmer"
+            | "Myanmar"
             // --- African ---
-            readonly Ethiopic: "Ethiopic";
-
+            | "Ethiopic"
             // --- Other ---
-            readonly Lowercase: "Lowercase";
-            readonly Uppercase: "Uppercase";
-            readonly Modifier: "Modifier",
-            readonly Alphabetic: "Alphabetic";
-            readonly Letter: "Letter";
-            readonly Decimal: "Decimal";
-            readonly Number: "Number";
-            readonly Emoji: "Emoji";
-            readonly Symbol: "Symbol";
-            readonly Punctuation: "Punctuation";
-            readonly Yakumono: "Yakumono";
-            readonly Space: "Space";
-            readonly Separator: "Separator";
+            | "LowercaseLetter"
+            | "UppercaseLetter"
+            | "ModifierLetter"
+            | "Alphabetic"
+            | "Letter"
+            | "DecimalNumber"
+            | "Number"
+            | "Emoji"
+            | "Symbol"
+            | "Punctuation"
+            | "Control"
+            | "SpaceSeparator"
+            | "Separator"
+            // --- Utility ---
+            | "Yakumono"
+            | "Whitespace"
+            | "InlineWhitespace"
+            | "LineBreak"
+            ;
+
+        interface CharClass {
+            name: string;
+            test(g: string): boolean;
         }
 
-        type CharClass = CharClassMap[keyof CharClassMap];
+        type CharClassMap = Record<CharClassKey, CharClass>;
 
-        type CharMatcher = CharClass | RegExp;
+        type CharMatcher = CharClassKey | CharClass | RegExp;
+
+        type CharMatchers = CharMatcher | CharMatcher[];
+
+        type CharPredicate = (g: string) => boolean;
+
+        function createMatcher(matchers: CharMatchers): CharPredicate;
 
         type TextLayoutKeys = "direction" | "firstLineIndent" | "isEveryLineComposer" | "isHangingRoman" | "justification" | "leadingType" | "leftMargin" | "rightMargin" | "spaceAfter" | "spaceBefore";
 
@@ -410,7 +421,7 @@ declare namespace Atarabi {
             layout(layout?: TextLayoutOptions): this;
         }
 
-        type CharClassRule = CharMatcher | CharMatcher[];
+        type CharClassRule = CharMatchers;
 
         interface CharClassTextStyleBuilder extends TextStyleBuilder<CharClassRule> {
             exclusive(): this;
@@ -425,14 +436,12 @@ declare namespace Atarabi {
 
         type PositionRule = PositionRuleItem | PositionRuleItem[];
 
-        type CountWhenPreset = "all" | "nonWhitespace" | "nonLineBreak" | "nonWhitespaceOrLineBreak";
-
-        type CountWhen = CountWhenPreset | CharClass | ((g: string) => boolean) | RegExp;
+        type SkipWhen = CharMatchers;
 
         interface PositionTextStyleBuilder extends TextStyleBuilder<PositionRule> {
             line(): this;
             global(): this; // default
-            countWhen(when: CountWhen): this; // "all"
+            skipWhen(when: SkipWhen): this;
         }
 
         type LineRule = RangeRule | RangeRule[];
@@ -458,15 +467,26 @@ declare namespace Atarabi {
             readonly line: number;
             readonly indexInLine: number;
             readonly lineLength: number;
-            readonly includeLF: boolean;
+            readonly includeLB: boolean;
             readonly totalLines: number;
             readonly iteration: number;
-            state: Record<string, unknown>;
+            graphemeAt(index: number): string | null;
+            prev(skipWhen?: SkipWhen): string | null;
+            prevInLine(skipWhen?: SkipWhen): string | null;
+            next(skipWhen?: SkipWhen): string | null;
+            nextInLine(skipWhen?: SkipWhen): string | null;
+            peek(offset: number, skipWhen?: SkipWhen): string | null;
+            peekInLine(offset: number, skipWhen?: SkipWhen): string | null;
+            isFirst(skipWhen?: SkipWhen): boolean;
+            isFirstOfLine(skipWhen?: SkipWhen): boolean;
+            isLast(skipWhen?: SkipWhen): boolean;
+            isLastOfLine(skipWhen?: SkipWhen): boolean;
+            state: Record<string, any>;
         }
 
         type GraphemeMatcher = (grapheme: string, ctx: GraphemeContext) => boolean | void;
 
-        type GraphemeStateFn = () => Record<string, unknown>;
+        type GraphemeStateFn = () => Record<string, any>;
 
         type GraphemeRule = GraphemeMatcher | { match: GraphemeMatcher; initState: GraphemeStateFn; };
 
