@@ -10,9 +10,7 @@
 		"outDir": "./dest",
 	},
 	"include": [
-		"./typings/ae.expression.d.ts",
-		"./typings/@expression.lib.d.ts",
-		"./typings/fontFamily.gen.d.ts",
+		"types/**/*.d.ts",
 		"./src/**/*.tsx",
 		"./src/**/*.jsx",
 	],

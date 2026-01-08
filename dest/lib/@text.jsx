@@ -4,6 +4,7 @@
         if (!force && LIB.text) {
             return LIB.text;
         }
+        const DEFAULT_LOCALE = Intl.DateTimeFormat().resolvedOptions().locale;
         class CharClass {
             _name;
             _re;
@@ -123,92 +124,6 @@
                 }
             }
             return result;
-        }
-        function toRegExp(m) {
-            if (typeof m === "string") {
-                const r = CHAR_CLASS_REGISTRY[m];
-                if (!r)
-                    throw new Error(`Unsupported CharClass: ${m}`);
-                return r.re;
-            }
-            else if (CharClass.isCharClass(m)) {
-                return m.re;
-            }
-            else if (m instanceof RegExp) {
-                return m;
-            }
-            throw new Error(`Unsupported CharClass: ${m}`);
-        }
-        function annotateByCharClassOverlay(text, charClass) {
-            const res = (() => {
-                if (Array.isArray(charClass))
-                    return charClass.flatMap(toRegExp);
-                return [toRegExp(charClass)].flat();
-            })();
-            const ranges = [];
-            for (const re0 of res) {
-                const flags = re0.flags.includes("g") ? re0.flags : re0.flags + "g";
-                const re = new RegExp(re0.source, flags);
-                let m;
-                while ((m = re.exec(text)) !== null) {
-                    ranges.push({
-                        from: m.index,
-                        count: m[0].length,
-                    });
-                    if (m[0].length === 0) {
-                        re.lastIndex++;
-                    }
-                }
-            }
-            return mergeRanges(ranges);
-        }
-        function annotateByCharClassExclusive(text, charClasses) {
-            const rules = charClasses.map(cls => {
-                const res = Array.isArray(cls) ? cls.flatMap(toRegExp) : [toRegExp(cls)].flat();
-                return res.map(re0 => {
-                    const flags = re0.flags.includes("y") ? re0.flags : re0.flags + "y";
-                    return new RegExp(re0.source, flags);
-                });
-            });
-            const ranges = [];
-            let i = 0;
-            while (i < text.length) {
-                let matchedIndex = -1;
-                let matchLength = 1;
-                for (let idx = 0; idx < rules.length; idx++) {
-                    const res = rules[idx];
-                    for (const re of res) {
-                        re.lastIndex = i;
-                        const m = re.exec(text);
-                        if (m) {
-                            matchedIndex = idx;
-                            matchLength = m[0].length;
-                            break;
-                        }
-                    }
-                    if (matchedIndex !== -1)
-                        break;
-                }
-                if (matchedIndex === -1) {
-                    let end = i + 1;
-                    while (end < text.length) {
-                        const anyMatch = rules.some(regexList => regexList.some(r => r.exec(text.slice(end))?.index === 0));
-                        if (anyMatch)
-                            break;
-                        end++;
-                    }
-                    matchLength = end - i;
-                }
-                const last = ranges[ranges.length - 1];
-                if (last && last.index === matchedIndex) {
-                    last.count += matchLength;
-                }
-                else {
-                    ranges.push({ from: i, count: matchLength, index: matchedIndex });
-                }
-                i += matchLength;
-            }
-            return ranges;
         }
         function applyTextStyleAll(property, style, field, value) {
             switch (field) {
@@ -603,8 +518,94 @@
                 return style;
             }
         }
+        function toRegExp(m) {
+            if (typeof m === "string") {
+                const r = CHAR_CLASS_REGISTRY[m];
+                if (!r)
+                    throw new Error(`Unsupported CharClass: ${m}`);
+                return r.re;
+            }
+            else if (CharClass.isCharClass(m)) {
+                return m.re;
+            }
+            else if (m instanceof RegExp) {
+                return m;
+            }
+            throw new Error(`Unsupported CharClass: ${m}`);
+        }
+        function annotateByCharClassOverlay(text, charClass) {
+            const res = (() => {
+                if (Array.isArray(charClass))
+                    return charClass.flatMap(toRegExp);
+                return [toRegExp(charClass)].flat();
+            })();
+            const ranges = [];
+            for (const re0 of res) {
+                const flags = re0.flags.includes("g") ? re0.flags : re0.flags + "g";
+                const re = new RegExp(re0.source, flags);
+                let m;
+                while ((m = re.exec(text)) !== null) {
+                    ranges.push({
+                        from: m.index,
+                        count: m[0].length,
+                    });
+                    if (m[0].length === 0) {
+                        re.lastIndex++;
+                    }
+                }
+            }
+            return mergeRanges(ranges);
+        }
+        function annotateByCharClassExclusive(text, charClasses) {
+            const rules = charClasses.map(cls => {
+                const res = Array.isArray(cls) ? cls.flatMap(toRegExp) : [toRegExp(cls)].flat();
+                return res.map(re0 => {
+                    const flags = re0.flags.includes("y") ? re0.flags : re0.flags + "y";
+                    return new RegExp(re0.source, flags);
+                });
+            });
+            const ranges = [];
+            let i = 0;
+            while (i < text.length) {
+                let matchedIndex = -1;
+                let matchLength = 1;
+                for (let idx = 0; idx < rules.length; idx++) {
+                    const res = rules[idx];
+                    for (const re of res) {
+                        re.lastIndex = i;
+                        const m = re.exec(text);
+                        if (m) {
+                            matchedIndex = idx;
+                            matchLength = m[0].length;
+                            break;
+                        }
+                    }
+                    if (matchedIndex !== -1)
+                        break;
+                }
+                if (matchedIndex === -1) {
+                    let end = i + 1;
+                    while (end < text.length) {
+                        const anyMatch = rules.some(regexList => regexList.some(r => r.exec(text.slice(end))?.index === 0));
+                        if (anyMatch)
+                            break;
+                        end++;
+                    }
+                    matchLength = end - i;
+                }
+                const last = ranges[ranges.length - 1];
+                if (last && last.index === matchedIndex) {
+                    last.count += matchLength;
+                }
+                else {
+                    ranges.push({ from: i, count: matchLength, index: matchedIndex });
+                }
+                i += matchLength;
+            }
+            return ranges;
+        }
         class CharClassTextStyleBuilder extends TextStyleBuilder {
-            charClasses = [];
+            rules = [];
             styles = [];
             doExclusive = false;
             get defaultRule() {
@@ -619,14 +620,14 @@
                 return this;
             }
             addRule(rule, style) {
-                this.charClasses.push(rule);
+                this.rules.push(rule);
                 this.styles.push(style);
                 return this;
             }
             resolve(text) {
                 let result = [];
                 if (this.doExclusive) {
-                    const ranges = annotateByCharClassExclusive(text, this.charClasses);
+                    const ranges = annotateByCharClassExclusive(text, this.rules);
                     for (const { from, count, index } of ranges) {
                         if (index < 0) {
                             continue;
@@ -635,14 +636,64 @@
                     }
                 }
                 else {
-                    for (let i = 0; i < this.charClasses.length; i++) {
-                        const ranges = annotateByCharClassOverlay(text, this.charClasses[i]);
+                    for (let i = 0; i < this.rules.length; i++) {
+                        const ranges = annotateByCharClassOverlay(text, this.rules[i]);
                         for (const { from, count } of ranges) {
                             result.push({ from, count, style: this.styles[i] });
                         }
                     }
                     result = normalizeRanges(result);
                 }
+                return result;
+            }
+        }
+        function annotateByRegExp(text, res) {
+            const regexList = Array.isArray(res) ? res : [res];
+            const ranges = [];
+            for (const re of regexList) {
+                const regex = new RegExp(re.source, re.flags.includes("g") ? re.flags : re.flags + "g");
+                let match;
+                while ((match = regex.exec(text)) !== null) {
+                    if (match[0].length === 0) {
+                        regex.lastIndex++;
+                        continue;
+                    }
+                    if (match.length > 1) {
+                        for (let i = 1; i < match.length; i++) {
+                            if (match[i] == null)
+                                continue;
+                            const start = match.index + match[0].indexOf(match[i]);
+                            const length = match[i].length;
+                            ranges.push({ from: start, count: length });
+                        }
+                    }
+                    else {
+                        ranges.push({ from: match.index, count: match[0].length });
+                    }
+                }
+            }
+            return mergeRanges(ranges);
+        }
+        class RegExpTextStyleBuilder extends TextStyleBuilder {
+            rules = [];
+            styles = [];
+            get defaultRule() {
+                return /[\s\S]+/g;
+            }
+            addRule(rule, style) {
+                this.rules.push(rule);
+                this.styles.push(style);
+                return this;
+            }
+            resolve(text) {
+                let result = [];
+                for (let i = 0; i < this.rules.length; i++) {
+                    const ranges = annotateByRegExp(text, this.rules[i]);
+                    for (const { from, count } of ranges) {
+                        result.push({ from, count, style: this.styles[i] });
+                    }
+                }
+                result = normalizeRanges(result);
                 return result;
             }
         }
@@ -967,17 +1018,20 @@
                 return result;
             }
         }
-        function isLineBreakGrapheme(g) {
+        function isLineBreak(g) {
             return g === "\n" || g === "\r" || g === "\r\n";
         }
-        function segmentText(text) {
+        function updateContext(ctx, data) {
+            Object.assign(ctx, data);
+        }
+        function segmentTextByGrapheme(text) {
             const segmenter = new Intl.Segmenter(undefined, { granularity: "grapheme" });
             const graphemes = [...segmenter.segment(text)];
             const lines = [];
             let lineStart = 0;
             let lineIndex = 0;
             graphemes.forEach((seg, i) => {
-                if (isLineBreakGrapheme(seg.segment)) {
+                if (isLineBreak(seg.segment)) {
                     const count = i - lineStart + 1;
                     lines.push({
                         index: lineIndex,
@@ -1000,17 +1054,17 @@
             }
             return { graphemes, lines };
         }
-        function processGrapheme(text, rules, iteration) {
-            const { graphemes, lines } = segmentText(text);
+        function processGrapheme(text, rules) {
+            const { graphemes, lines } = segmentTextByGrapheme(text);
             const results = rules.map(() => []);
             const contexts = rules.map(rule => ({
                 index: 0,
                 line: 0,
                 indexInLine: 0,
-                lineLength: 0,
+                itemsInLine: 0,
                 includeLB: false,
+                total: 0,
                 totalLines: 0,
-                iteration: 0,
                 graphemeAt: (index) => {
                     if (index < 0 || index >= graphemes.length)
                         return null;
@@ -1026,9 +1080,467 @@
                 isFirstOfLine: () => false,
                 isLast: () => false,
                 isLastOfLine: () => false,
-                state: rule.initState(),
+                state: rule.initState(graphemes.length, lines.length),
             }));
-            for (let iter = 0; iter < iteration; iter++) {
+            let line = 0;
+            let lineInfo = lines[0];
+            graphemes.forEach((seg, globalIndex) => {
+                if (globalIndex >= lineInfo.from + lineInfo.count) {
+                    line++;
+                    lineInfo = lines[line];
+                }
+                const g = seg.segment;
+                const from = seg.index;
+                const count = g.length;
+                const indexInLine = globalIndex - lineInfo.from;
+                const prev = (skipWhen = null) => {
+                    const skip = createMatcher(skipWhen);
+                    for (let i = globalIndex - 1; i >= 0; i--) {
+                        if (skip(graphemes[i].segment)) {
+                            continue;
+                        }
+                        return graphemes[i].segment;
+                    }
+                    return null;
+                };
+                const prevInLine = (skipWhen = null) => {
+                    const skip = createMatcher(skipWhen);
+                    for (let i = globalIndex - 1; i >= lineInfo.from; i--) {
+                        if (skip(graphemes[i].segment)) {
+                            continue;
+                        }
+                        return graphemes[i].segment;
+                    }
+                    return null;
+                };
+                const next = (skipWhen = null) => {
+                    const skip = createMatcher(skipWhen);
+                    for (let i = globalIndex + 1; i < graphemes.length; i++) {
+                        if (skip(graphemes[i].segment)) {
+                            continue;
+                        }
+                        return graphemes[i].segment;
+                    }
+                    return null;
+                };
+                const nextInLine = (skipWhen = null) => {
+                    const skip = createMatcher(skipWhen);
+                    const lineEnd = lineInfo.from + lineInfo.count;
+                    for (let i = globalIndex + 1; i < lineEnd; i++) {
+                        if (skip(graphemes[i].segment)) {
+                            continue;
+                        }
+                        return graphemes[i].segment;
+                    }
+                    return null;
+                };
+                const peek = (offset, skipWhen = null) => {
+                    offset |= 0;
+                    if (offset === 0)
+                        return g;
+                    const skip = createMatcher(skipWhen);
+                    const step = offset < 0 ? -1 : 1;
+                    let remain = Math.abs(offset);
+                    for (let i = globalIndex + step; i >= 0 && i < graphemes.length; i += step) {
+                        if (skip(graphemes[i].segment))
+                            continue;
+                        if (--remain === 0)
+                            return graphemes[i].segment;
+                    }
+                    return null;
+                };
+                const peekInLine = (offset, skipWhen = null) => {
+                    offset |= 0;
+                    if (offset === 0)
+                        return g;
+                    const skip = createMatcher(skipWhen);
+                    const step = offset < 0 ? -1 : 1;
+                    const lineStart = lineInfo.from;
+                    const lineEnd = lineInfo.from + lineInfo.count;
+                    let remain = Math.abs(offset);
+                    for (let i = globalIndex + step; i >= lineStart && i < lineEnd; i += step) {
+                        if (skip(graphemes[i].segment))
+                            continue;
+                        if (--remain === 0)
+                            return graphemes[i].segment;
+                    }
+                    return null;
+                };
+                const isFirst = (skipWhen = null) => {
+                    if (globalIndex === 0)
+                        return true;
+                    return prev(skipWhen) === null;
+                };
+                const isLast = (skipWhen = null) => {
+                    if (globalIndex === graphemes.length - 1)
+                        return true;
+                    return next(skipWhen) === null;
+                };
+                const isFirstOfLine = (skipWhen = null) => {
+                    if (indexInLine === 0)
+                        return true;
+                    return prevInLine(skipWhen) === null;
+                };
+                const isLastOfLine = (skipWhen = null) => {
+                    if (indexInLine === lineInfo.count - 1)
+                        return true;
+                    return nextInLine(skipWhen) === null;
+                };
+                rules.forEach((rule, i) => {
+                    const ctx = contexts[i];
+                    updateContext(ctx, {
+                        index: globalIndex,
+                        line,
+                        indexInLine,
+                        itemsInLine: lineInfo.count,
+                        includeLB: lineInfo.includeLB,
+                        total: graphemes.length,
+                        totalLines: lines.length,
+                        prev,
+                        prevInLine,
+                        next,
+                        nextInLine,
+                        peek,
+                        peekInLine,
+                        isFirst,
+                        isFirstOfLine,
+                        isLast,
+                        isLastOfLine,
+                    });
+                    if (rule.match(g, ctx)) {
+                        results[i].push({ from, count });
+                    }
+                });
+            });
+            return results.map(mergeRanges);
+        }
+        class GraphemeTextStyleBuilder extends TextStyleBuilder {
+            rules = [];
+            styles = [];
+            get defaultRule() {
+                return () => true;
+            }
+            addRule(rule, style) {
+                if (typeof rule === "function") {
+                    this.rules.push({ match: rule, initState: () => ({}) });
+                }
+                else {
+                    this.rules.push(rule);
+                }
+                this.styles.push(style);
+                return this;
+            }
+            resolve(text) {
+                let result = [];
+                const rangesList = processGrapheme(text, this.rules);
+                for (let i = 0; i < this.rules.length; i++) {
+                    const ranges = rangesList[i];
+                    for (const { from, count } of ranges) {
+                        result.push({ from, count, style: this.styles[i] });
+                    }
+                }
+                result = normalizeRanges(result);
+                return result;
+            }
+        }
+        function segmentTextByWord(text, locale) {
+            const segmenter = new Intl.Segmenter(locale, { granularity: "word" });
+            const words = [...segmenter.segment(text)];
+            const lines = [];
+            let lineStart = 0;
+            let lineIndex = 0;
+            words.forEach((seg, i) => {
+                if (isLineBreak(seg.segment)) {
+                    const count = i - lineStart + 1;
+                    lines.push({
+                        index: lineIndex,
+                        from: lineStart,
+                        count,
+                        includeLB: true,
+                    });
+                    lineIndex++;
+                    lineStart = i + 1;
+                }
+            });
+            // last line
+            if (lineStart < words.length) {
+                lines.push({
+                    index: lineIndex,
+                    from: lineStart,
+                    count: words.length - lineStart,
+                    includeLB: false,
+                });
+            }
+            return { words, lines };
+        }
+        function applyRange(output, range, globalFrom, localLength) {
+            const apply = (r) => {
+                const localFrom = Math.max(0, r.from | 0);
+                if (localFrom >= localLength)
+                    return;
+                const localCount = typeof r.count === "number" ? Math.min(localLength - localFrom, r.count | 0) : localLength - localFrom;
+                if (localCount > 0) {
+                    output.push(Object.assign({}, r, { from: globalFrom + localFrom, count: localCount, }));
+                }
+            };
+            Array.isArray(range) ? range.forEach(apply) : apply(range);
+        }
+        function processWord(locale, text, rules) {
+            const { words, lines } = segmentTextByWord(text, locale);
+            const results = rules.map(() => []);
+            const graphemeSegmenter = new Intl.Segmenter(undefined, { granularity: "grapheme" });
+            const contexts = rules.map(rule => ({
+                index: 0,
+                line: 0,
+                indexInLine: 0,
+                itemsInLine: 0,
+                includeLB: false,
+                total: 0,
+                totalLines: 0,
+                graphemes: () => [],
+                wordAt: (index) => {
+                    if (index < 0 || index >= words.length)
+                        return null;
+                    return words[index].segment;
+                },
+            }));
+            let line = 0;
+            let lineInfo = lines[0];
+            words.forEach((seg, globalIndex) => {
+                if (globalIndex >= lineInfo.from + lineInfo.count) {
+                    line++;
+                    lineInfo = lines[line];
+                }
+                const w = seg.segment;
+                const from = seg.index;
+                const count = w.length;
+                const indexInLine = globalIndex - lineInfo.from;
+                const graphemes = () => {
+                    return [...graphemeSegmenter.segment(w)].map(s => s.segment);
+                };
+                rules.forEach((rule, i) => {
+                    const ctx = contexts[i];
+                    updateContext(ctx, {
+                        index: globalIndex,
+                        line,
+                        indexInLine,
+                        itemsInLine: lineInfo.count,
+                        includeLB: lineInfo.includeLB,
+                        total: words.length,
+                        totalLines: lines.length,
+                        graphemes,
+                    });
+                    const r = rule(w, ctx);
+                    if (r) {
+                        applyRange(results[i], r, from, count);
+                    }
+                });
+            });
+            return results.map(mergeRanges);
+        }
+        class WordTextStyleBuilder extends TextStyleBuilder {
+            locale;
+            rules = [];
+            styles = [];
+            get defaultRule() {
+                return () => ({ from: 0 });
+            }
+            constructor(locale) {
+                super();
+                this.locale = locale;
+            }
+            addRule(rule, style) {
+                this.rules.push(rule);
+                this.styles.push(style);
+                return this;
+            }
+            resolve(text) {
+                let result = [];
+                const rangesList = processWord(this.locale, text, this.rules);
+                for (let i = 0; i < this.rules.length; i++) {
+                    const ranges = rangesList[i];
+                    for (const { from, count } of ranges) {
+                        result.push({ from, count, style: this.styles[i] });
+                    }
+                }
+                result = normalizeRanges(result);
+                return result;
+            }
+        }
+        function containsLineBreak(text) {
+            return /\r\n|\r|\n/.test(text);
+        }
+        function segmentTextBySentence(text, locale) {
+            const segmenter = new Intl.Segmenter(locale, { granularity: "sentence" });
+            const sentences = [...segmenter.segment(text)];
+            const lines = [];
+            let lineStart = 0;
+            let lineIndex = 0;
+            sentences.forEach((seg, i) => {
+                if (containsLineBreak(seg.segment)) {
+                    const count = i - lineStart + 1;
+                    lines.push({
+                        index: lineIndex,
+                        from: lineStart,
+                        count,
+                        includeLB: true,
+                    });
+                    lineIndex++;
+                    lineStart = i + 1;
+                }
+            });
+            // last line
+            if (lineStart < sentences.length) {
+                lines.push({
+                    index: lineIndex,
+                    from: lineStart,
+                    count: sentences.length - lineStart,
+                    includeLB: false,
+                });
+            }
+            return { sentences, lines };
+        }
+        function processSentence(locale, text, rules) {
+            const { sentences, lines } = segmentTextBySentence(text, locale);
+            const results = rules.map(() => []);
+            const contexts = rules.map(rule => ({
+                index: 0,
+                line: 0,
+                indexInLine: 0,
+                itemsInLine: 0,
+                includeLB: false,
+                total: 0,
+                totalLines: 0,
+                sentenceAt: (index) => {
+                    if (index < 0 || index >= sentences.length)
+                        return null;
+                    return sentences[index].segment;
+                },
+            }));
+            let line = 0;
+            let lineInfo = lines[0];
+            sentences.forEach((seg, globalIndex) => {
+                if (globalIndex >= lineInfo.from + lineInfo.count) {
+                    line++;
+                    lineInfo = lines[line];
+                }
+                const s = seg.segment;
+                const from = seg.index;
+                const count = s.length;
+                const indexInLine = globalIndex - lineInfo.from;
+                rules.forEach((rule, i) => {
+                    const ctx = contexts[i];
+                    updateContext(ctx, {
+                        index: globalIndex,
+                        line,
+                        indexInLine,
+                        itemsInLine: lineInfo.count,
+                        includeLB: lineInfo.includeLB,
+                        total: sentences.length,
+                        totalLines: lines.length,
+                    });
+                    const r = rule(s, ctx);
+                    if (r) {
+                        applyRange(results[i], r, from, count);
+                    }
+                });
+            });
+            return results.map(mergeRanges);
+        }
+        class SentenceTextStyleBuilder extends TextStyleBuilder {
+            locale;
+            rules = [];
+            styles = [];
+            get defaultRule() {
+                return () => ({ from: 0 });
+            }
+            constructor(locale) {
+                super();
+                this.locale = locale;
+            }
+            addRule(rule, style) {
+                this.rules.push(rule);
+                this.styles.push(style);
+                return this;
+            }
+            resolve(text) {
+                let result = [];
+                const rangesList = processSentence(this.locale, text, this.rules);
+                for (let i = 0; i < this.rules.length; i++) {
+                    const ranges = rangesList[i];
+                    for (const { from, count } of ranges) {
+                        result.push({ from, count, style: this.styles[i] });
+                    }
+                }
+                result = normalizeRanges(result);
+                return result;
+            }
+        }
+        class TextStyleApplier {
+            apply(property = thisLayer.text.sourceText, style = property.style) {
+                for (const { from, count, style: st } of this.resolve(property.value)) {
+                    style = applyStyle(style, st, from, count);
+                }
+                return style;
+            }
+        }
+        class ForEachLine extends TextStyleApplier {
+            fn;
+            constructor(fn) {
+                super();
+                this.fn = fn;
+            }
+            resolve(text) {
+                let result = [];
+                const lines = annotateByLine(text);
+                const fn = this.fn;
+                for (let i = 0; i < lines.length; i++) {
+                    const line = lines[i];
+                    const res = fn(text.slice(line.from, line.from + line.count), i, lines.length);
+                    if (res) {
+                        result.push({ from: line.from, count: line.count, style: res });
+                    }
+                }
+                return result;
+            }
+        }
+        class ForEachGrapheme extends TextStyleApplier {
+            fn;
+            options;
+            constructor(fn, options) {
+                super();
+                this.fn = fn;
+                this.options = { ...{ iterations: 1, initState: () => ({}) }, ...options };
+            }
+            resolve(text) {
+                let result = [];
+                const { graphemes, lines } = segmentTextByGrapheme(text);
+                const ctx = {
+                    index: 0,
+                    line: 0,
+                    indexInLine: 0,
+                    itemsInLine: 0,
+                    includeLB: false,
+                    total: 0,
+                    totalLines: 0,
+                    graphemeAt: (index) => {
+                        if (index < 0 || index >= graphemes.length)
+                            return null;
+                        return graphemes[index].segment;
+                    },
+                    prev: () => null,
+                    prevInLine: () => null,
+                    next: () => null,
+                    nextInLine: () => null,
+                    peek: () => null,
+                    peekInLine: () => null,
+                    isFirst: () => false,
+                    isFirstOfLine: () => false,
+                    isLast: () => false,
+                    isLastOfLine: () => false,
+                    state: this.options.initState(graphemes.length, lines.length),
+                };
+                const fn = this.fn;
                 let line = 0;
                 let lineInfo = lines[0];
                 graphemes.forEach((seg, globalIndex) => {
@@ -1133,261 +1645,208 @@
                             return true;
                         return nextInLine(skipWhen) === null;
                     };
-                    rules.forEach((rule, i) => {
-                        const ctx = contexts[i];
-                        ctx.index = globalIndex;
-                        ctx.line = line;
-                        ctx.indexInLine = indexInLine;
-                        ctx.includeLB = lineInfo.includeLB;
-                        ctx.lineLength = lineInfo.count;
-                        ctx.totalLines = lines.length;
-                        ctx.iteration = iter;
-                        ctx.prev = prev;
-                        ctx.prevInLine = prevInLine;
-                        ctx.next = next;
-                        ctx.nextInLine = nextInLine;
-                        ctx.peek = peek;
-                        ctx.peekInLine = peekInLine;
-                        ctx.isFirst = isFirst;
-                        ctx.isFirstOfLine = isFirstOfLine;
-                        ctx.isLast = isLast;
-                        ctx.isLastOfLine = isLastOfLine;
-                        if (iter === iteration - 1 && rule.match(g, ctx)) {
-                            results[i].push({ from, count });
-                        }
+                    updateContext(ctx, {
+                        index: globalIndex,
+                        line,
+                        indexInLine,
+                        itemsInLine: lineInfo.count,
+                        includeLB: lineInfo.includeLB,
+                        total: graphemes.length,
+                        totalLines: lines.length,
+                        prev,
+                        prevInLine,
+                        next,
+                        nextInLine,
+                        peek,
+                        peekInLine,
+                        isFirst,
+                        isFirstOfLine,
+                        isLast,
+                        isLastOfLine,
                     });
+                    const ret = fn(g, ctx);
+                    if (ret) {
+                        result.push({ from, count, style: ret });
+                    }
                 });
-            }
-            return results.map(mergeRanges);
-        }
-        class GraphemeTextStyleBuilder extends TextStyleBuilder {
-            rules = [];
-            styles = [];
-            iteration = 1;
-            get defaultRule() {
-                return () => true;
-            }
-            iterations(iter) {
-                this.iteration = Math.max(1, iter);
-                return this;
-            }
-            addRule(rule, style) {
-                if (typeof rule === "function") {
-                    this.rules.push({ match: rule, initState: () => ({}) });
-                }
-                else {
-                    this.rules.push(rule);
-                }
-                this.styles.push(style);
-                return this;
-            }
-            resolve(text) {
-                let result = [];
-                const rangesList = processGrapheme(text, this.rules, this.iteration);
-                for (let i = 0; i < this.rules.length; i++) {
-                    const ranges = rangesList[i];
-                    for (const { from, count } of ranges) {
-                        result.push({ from, count, style: this.styles[i] });
-                    }
-                }
-                result = normalizeRanges(result);
                 return result;
             }
         }
-        class TextStyleApplier {
-            apply(property = thisLayer.text.sourceText, style = property.style) {
-                for (const { from, count, style: st } of this.resolve(property.value)) {
-                    style = applyStyle(style, st, from, count);
-                }
-                return style;
-            }
-        }
-        class ForEachLine extends TextStyleApplier {
-            fn;
-            constructor(fn) {
-                super();
-                this.fn = fn;
-            }
-            resolve(text) {
-                let result = [];
-                const lines = annotateByLine(text);
-                const fn = this.fn;
-                for (let i = 0; i < lines.length; i++) {
-                    const line = lines[i];
-                    const res = fn(text.slice(line.from, line.from + line.count), i, lines.length);
-                    if (res) {
-                        result.push({ from: line.from, count: line.count, style: res });
-                    }
-                }
-                return result;
-            }
-        }
-        class ForEachGrapheme extends TextStyleApplier {
+        class ForEachWord extends TextStyleApplier {
             fn;
             options;
             constructor(fn, options) {
                 super();
                 this.fn = fn;
-                this.options = { ...{ iterations: 1, initState: () => ({}) }, ...options };
+                this.options = { ...{ locale: DEFAULT_LOCALE }, ...options };
             }
             resolve(text) {
                 let result = [];
-                const { graphemes, lines } = segmentText(text);
+                const { words, lines } = segmentTextByWord(text);
+                const graphemeSegmenter = new Intl.Segmenter(undefined, { granularity: "grapheme" });
                 const ctx = {
                     index: 0,
                     line: 0,
                     indexInLine: 0,
-                    lineLength: 0,
+                    itemsInLine: 0,
                     includeLB: false,
+                    total: 0,
                     totalLines: 0,
-                    iteration: 0,
-                    graphemeAt: (index) => {
-                        if (index < 0 || index >= graphemes.length)
+                    graphemes: () => [],
+                    wordAt: (index) => {
+                        if (index < 0 || index >= words.length)
                             return null;
-                        return graphemes[index].segment;
+                        return words[index].segment;
                     },
-                    prev: () => null,
-                    prevInLine: () => null,
-                    next: () => null,
-                    nextInLine: () => null,
-                    peek: () => null,
-                    peekInLine: () => null,
-                    isFirst: () => false,
-                    isFirstOfLine: () => false,
-                    isLast: () => false,
-                    isLastOfLine: () => false,
-                    state: this.options.initState(),
                 };
                 const fn = this.fn;
-                const iteration = Math.max(1, this.options.iterations);
-                for (let iter = 0; iter < iteration; iter++) {
-                    let line = 0;
-                    let lineInfo = lines[0];
-                    graphemes.forEach((seg, globalIndex) => {
-                        if (globalIndex >= lineInfo.from + lineInfo.count) {
-                            line++;
-                            lineInfo = lines[line];
-                        }
-                        const g = seg.segment;
-                        const from = seg.index;
-                        const count = g.length;
-                        const indexInLine = globalIndex - lineInfo.from;
-                        const prev = (skipWhen = null) => {
-                            const skip = createMatcher(skipWhen);
-                            for (let i = globalIndex - 1; i >= 0; i--) {
-                                if (skip(graphemes[i].segment)) {
-                                    continue;
-                                }
-                                return graphemes[i].segment;
-                            }
-                            return null;
-                        };
-                        const prevInLine = (skipWhen = null) => {
-                            const skip = createMatcher(skipWhen);
-                            for (let i = globalIndex - 1; i >= lineInfo.from; i--) {
-                                if (skip(graphemes[i].segment)) {
-                                    continue;
-                                }
-                                return graphemes[i].segment;
-                            }
-                            return null;
-                        };
-                        const next = (skipWhen = null) => {
-                            const skip = createMatcher(skipWhen);
-                            for (let i = globalIndex + 1; i < graphemes.length; i++) {
-                                if (skip(graphemes[i].segment)) {
-                                    continue;
-                                }
-                                return graphemes[i].segment;
-                            }
-                            return null;
-                        };
-                        const nextInLine = (skipWhen = null) => {
-                            const skip = createMatcher(skipWhen);
-                            const lineEnd = lineInfo.from + lineInfo.count;
-                            for (let i = globalIndex + 1; i < lineEnd; i++) {
-                                if (skip(graphemes[i].segment)) {
-                                    continue;
-                                }
-                                return graphemes[i].segment;
-                            }
-                            return null;
-                        };
-                        const peek = (offset, skipWhen = null) => {
-                            offset |= 0;
-                            if (offset === 0)
-                                return g;
-                            const skip = createMatcher(skipWhen);
-                            const step = offset < 0 ? -1 : 1;
-                            let remain = Math.abs(offset);
-                            for (let i = globalIndex + step; i >= 0 && i < graphemes.length; i += step) {
-                                if (skip(graphemes[i].segment))
-                                    continue;
-                                if (--remain === 0)
-                                    return graphemes[i].segment;
-                            }
-                            return null;
-                        };
-                        const peekInLine = (offset, skipWhen = null) => {
-                            offset |= 0;
-                            if (offset === 0)
-                                return g;
-                            const skip = createMatcher(skipWhen);
-                            const step = offset < 0 ? -1 : 1;
-                            const lineStart = lineInfo.from;
-                            const lineEnd = lineInfo.from + lineInfo.count;
-                            let remain = Math.abs(offset);
-                            for (let i = globalIndex + step; i >= lineStart && i < lineEnd; i += step) {
-                                if (skip(graphemes[i].segment))
-                                    continue;
-                                if (--remain === 0)
-                                    return graphemes[i].segment;
-                            }
-                            return null;
-                        };
-                        const isFirst = (skipWhen = null) => {
-                            if (globalIndex === 0)
-                                return true;
-                            return prev(skipWhen) === null;
-                        };
-                        const isLast = (skipWhen = null) => {
-                            if (globalIndex === graphemes.length - 1)
-                                return true;
-                            return next(skipWhen) === null;
-                        };
-                        const isFirstOfLine = (skipWhen = null) => {
-                            if (indexInLine === 0)
-                                return true;
-                            return prevInLine(skipWhen) === null;
-                        };
-                        const isLastOfLine = (skipWhen = null) => {
-                            if (indexInLine === lineInfo.count - 1)
-                                return true;
-                            return nextInLine(skipWhen) === null;
-                        };
-                        ctx.index = globalIndex;
-                        ctx.line = line;
-                        ctx.indexInLine = indexInLine;
-                        ctx.includeLB = lineInfo.includeLB;
-                        ctx.lineLength = lineInfo.count;
-                        ctx.totalLines = lines.length;
-                        ctx.iteration = iter;
-                        ctx.prev = prev;
-                        ctx.prevInLine = prevInLine;
-                        ctx.next = next;
-                        ctx.nextInLine = nextInLine;
-                        ctx.peek = peek;
-                        ctx.peekInLine = peekInLine;
-                        ctx.isFirst = isFirst;
-                        ctx.isFirstOfLine = isFirstOfLine;
-                        ctx.isLast = isLast;
-                        ctx.isLastOfLine = isLastOfLine;
-                        const ret = fn(g, ctx);
-                        if (iter === iteration - 1 && ret) {
-                            result.push({ from, count, style: ret });
-                        }
+                let line = 0;
+                let lineInfo = lines[0];
+                words.forEach((seg, globalIndex) => {
+                    if (globalIndex >= lineInfo.from + lineInfo.count) {
+                        line++;
+                        lineInfo = lines[line];
+                    }
+                    const w = seg.segment;
+                    const from = seg.index;
+                    const count = w.length;
+                    const indexInLine = globalIndex - lineInfo.from;
+                    const graphemes = () => {
+                        return [...graphemeSegmenter.segment(w)].map(s => s.segment);
+                    };
+                    updateContext(ctx, {
+                        index: globalIndex,
+                        line,
+                        indexInLine,
+                        itemsInLine: lineInfo.count,
+                        includeLB: lineInfo.includeLB,
+                        total: words.length,
+                        totalLines: lines.length,
+                        graphemes,
                     });
+                    const r = fn(w, ctx);
+                    if (r) {
+                        applyRange(result, r, from, count);
+                    }
+                });
+                result = normalizeRanges(result);
+                return result;
+            }
+        }
+        class ForEachSentence extends TextStyleApplier {
+            fn;
+            options;
+            constructor(fn, options) {
+                super();
+                this.fn = fn;
+                this.options = { ...{ locale: DEFAULT_LOCALE }, ...options };
+            }
+            resolve(text) {
+                let result = [];
+                const { sentences, lines } = segmentTextBySentence(text);
+                const graphemeSegmenter = new Intl.Segmenter(undefined, { granularity: "grapheme" });
+                const ctx = {
+                    index: 0,
+                    line: 0,
+                    indexInLine: 0,
+                    itemsInLine: 0,
+                    includeLB: false,
+                    total: 0,
+                    totalLines: 0,
+                    sentenceAt: (index) => {
+                        if (index < 0 || index >= sentences.length)
+                            return null;
+                        return sentences[index].segment;
+                    },
+                };
+                const fn = this.fn;
+                let line = 0;
+                let lineInfo = lines[0];
+                sentences.forEach((seg, globalIndex) => {
+                    if (globalIndex >= lineInfo.from + lineInfo.count) {
+                        line++;
+                        lineInfo = lines[line];
+                    }
+                    const w = seg.segment;
+                    const from = seg.index;
+                    const count = w.length;
+                    const indexInLine = globalIndex - lineInfo.from;
+                    updateContext(ctx, {
+                        index: globalIndex,
+                        line,
+                        indexInLine,
+                        itemsInLine: lineInfo.count,
+                        includeLB: lineInfo.includeLB,
+                        total: sentences.length,
+                        totalLines: lines.length,
+                    });
+                    const r = fn(w, ctx);
+                    if (r) {
+                        applyRange(result, r, from, count);
+                    }
+                });
+                result = normalizeRanges(result);
+                return result;
+            }
+        }
+        class ForEachRegExp extends TextStyleApplier {
+            re;
+            fn;
+            constructor(re, fn) {
+                super();
+                this.re = re;
+                this.fn = fn;
+            }
+            resolve(text) {
+                let result = [];
+                const patterns = Array.isArray(this.re) ? this.re : [this.re];
+                const regexes = patterns.map((r, i) => ({
+                    id: i,
+                    re: new RegExp(r.source, r.flags.includes("g") ? r.flags : r.flags + "g"),
+                    match: null,
+                }));
+                const fn = this.fn;
+                let cursor = 0;
+                let index = 0;
+                const refreshMatches = () => {
+                    for (let i = regexes.length - 1; i >= 0; i--) {
+                        const rx = regexes[i];
+                        rx.re.lastIndex = cursor;
+                        rx.match = rx.re.exec(text);
+                        if (!rx.match)
+                            regexes.splice(i, 1);
+                    }
+                };
+                refreshMatches();
+                while (regexes.length > 0) {
+                    let bestIndex = -1;
+                    let bestPos = Infinity;
+                    let bestId = Infinity;
+                    for (let i = 0; i < regexes.length; i++) {
+                        const m = regexes[i].match;
+                        const pos = m.index;
+                        if (pos < bestPos || (pos === bestPos && regexes[i].id < bestId)) {
+                            bestPos = pos;
+                            bestId = regexes[i].id;
+                            bestIndex = i;
+                        }
+                    }
+                    if (bestIndex === -1)
+                        break;
+                    const chosen = regexes[bestIndex];
+                    const match = chosen.match;
+                    const from = match.index;
+                    const count = match[0].length;
+                    const r = fn(match, { index, patternIndex: chosen.id });
+                    ++index;
+                    if (r) {
+                        applyRange(result, r, from, count);
+                    }
+                    const advance = match[0].length > 0 ? match[0].length : 1;
+                    cursor = match.index + advance;
+                    refreshMatches();
                 }
+                result = normalizeRanges(result);
                 return result;
             }
         }
@@ -1429,13 +1888,19 @@
                 all: (style) => new AllTextStyleBuilder(style),
                 // static
                 byCharClass: () => new CharClassTextStyleBuilder(),
+                byRegExp: () => new RegExpTextStyleBuilder(),
                 byPosition: () => new PositionTextStyleBuilder(),
                 byLine: () => new LineTextStyleBuilder(),
                 bySurrounding: (open, close, options) => new SurroundingTextStyleBuilder(open, close, options),
                 byGrapheme: () => new GraphemeTextStyleBuilder(),
+                byWord: (locale = DEFAULT_LOCALE) => new WordTextStyleBuilder(locale),
+                bySentence: (locale = DEFAULT_LOCALE) => new SentenceTextStyleBuilder(locale),
                 // dynamic
                 forEachLine: (fn) => new ForEachLine(fn),
                 forEachGrapheme: (fn, options) => new ForEachGrapheme(fn, options),
+                forEachWord: (fn, options) => new ForEachWord(fn, options),
+                forEachSentence: (fn, options) => new ForEachSentence(fn, options),
+                forEachRegExp: (re, fn) => new ForEachRegExp(re, fn),
                 // compose
                 compose: () => new TextStyleComposer(),
             },
