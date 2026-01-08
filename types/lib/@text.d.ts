@@ -126,6 +126,13 @@ declare namespace Atarabi {
             overlay(): this; // default
         }
 
+        type SearchRule = string | string[];
+
+        type SearchOptions = { caseSensitive?: boolean; };
+
+        interface SearchTextStyleBuilder extends TextStyleBuilder<SearchRule> {
+        }
+
         type RegExpRule = RegExp | RegExp[];
 
         interface RegExpTextStyleBuilder extends TextStyleBuilder<RegExpRule> {
@@ -270,6 +277,7 @@ declare namespace Atarabi {
             // static
             byCharClass(): CharClassTextStyleBuilder;
             byRegExp(): RegExpTextStyleBuilder;
+            bySearch(options?: SearchOptions): SearchTextStyleBuilder;
             byPosition(): PositionTextStyleBuilder;
             byLine(): LineTextStyleBuilder;
             bySurrounding(open: string, close: string, options?: SurroundingOptions): SurroundingTextStyleBuilder;

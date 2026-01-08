@@ -19,53 +19,57 @@
                 return v instanceof CharClass;
             }
         }
-        const CHAR_CLASS_REGISTRY = {
-            Hiragana: new CharClass("Hiragana", /\p{Script=Hiragana}/u),
-            Katakana: new CharClass("Hiragana", /\p{Script=Katakana}/u),
-            Kanji: new CharClass("Kanji", /\p{Script=Han}/u),
-            Japanese: new CharClass("Hiragana", /[\p{Script=Hiragana}\p{Script=Katakana}\p{Script=Han}ー〆]/u),
-            Han: new CharClass("Han", /\p{Script=Han}/u),
-            Hangul: new CharClass("Hangul", /\p{Script=Hangul}/u),
-            Latin: new CharClass("Latin", /\p{Script=Latin}/u),
-            Greek: new CharClass("Greek", /\p{Script=Greek}/u),
-            Cyrillic: new CharClass("Cyrillic", /\p{Script=Cyrillic}/u),
-            Arabic: new CharClass("Arabic", /\p{Script=Arabic}/u),
-            Hebrew: new CharClass("Hebrew", /\p{Script=Hebrew}/u),
-            Armenian: new CharClass("Armenian", /\p{Script=Armenian}/u),
-            Georgian: new CharClass("Georgian", /\p{Script=Georgian}/u),
-            Devanagari: new CharClass("Devanagari", /\p{Script=Devanagari}/u),
-            Bengali: new CharClass("Bengali", /\p{Script=Bengali}/u),
-            Gurmukhi: new CharClass("Gurmukhi", /\p{Script=Gurmukhi}/u),
-            Gujarati: new CharClass("Gujarati", /\p{Script=Gujarati}/u),
-            Oriya: new CharClass("Oriya", /\p{Script=Oriya}/u),
-            Tamil: new CharClass("Tamil", /\p{Script=Tamil}/u),
-            Telugu: new CharClass("Telugu", /\p{Script=Telugu}/u),
-            Kannada: new CharClass("Kannada", /\p{Script=Kannada}/u),
-            Malayalam: new CharClass("Malayalam", /\p{Script=Malayalam}/u),
-            Sinhala: new CharClass("Sinhala", /\p{Script=Sinhala}/u),
-            Thai: new CharClass("Thai", /\p{Script=Thai}/u),
-            Lao: new CharClass("Lao", /\p{Script=Lao}/u),
-            Khmer: new CharClass("Khmer", /\p{Script=Khmer}/u),
-            Myanmar: new CharClass("Myanmar", /\p{Script=Myanmar}/u),
-            Ethiopic: new CharClass("Ethiopic", /\p{Script=Ethiopic}/u),
-            LowercaseLetter: new CharClass("LowercaseLetter", /\p{Lowercase_Letter}/u),
-            UppercaseLetter: new CharClass("UppercaseLetter", /\p{Uppercase_Letter}/u),
-            ModifierLetter: new CharClass("ModifierLetter", /\p{Modifier_Letter}/u),
-            Alphabetic: new CharClass("Alphabetic", /\p{Alphabetic}/u),
-            Letter: new CharClass("Letter", /\p{Letter}/u),
-            DecimalNumber: new CharClass("DecimalNumber", /\p{Decimal_Number}/u),
-            Number: new CharClass("Number", /\p{Number}/u),
-            Emoji: new CharClass("Emoji", /\p{Extended_Pictographic}/u),
-            Symbol: new CharClass("Symbol", /\p{Symbol}/u),
-            Punctuation: new CharClass("Punctuation", /\p{Punctuation}/u),
-            Control: new CharClass("Control", /\p{Control}/u),
-            SpaceSeparator: new CharClass("SpaceSeparator", /\p{Space_Separator}/u),
-            Separator: new CharClass("Separator", /\p{Separator}/u),
-            Yakumono: new CharClass("Yakumono", /[、。，．・：；？！…―ー〜～「」『』（）［］｛｝〈〉《》【】]/),
-            Whitespace: new CharClass("Whitespace", /\s/u),
-            InlineWhitespace: new CharClass("InlineWhitespace", /[\p{Zs}\t]/u),
-            LineBreak: new CharClass("LineBreak", /(?:\r\n|[\n\r\u0085\u2028\u2029])/u),
+        const CHAR_CLASS_DEFINITIONS = {
+            Hiragana: /\p{Script=Hiragana}/u,
+            Katakana: /\p{Script=Katakana}/u,
+            Kanji: /\p{Script=Han}/u,
+            Japanese: /[\p{Script=Hiragana}\p{Script=Katakana}\p{Script=Han}ー〆]/u,
+            Han: /\p{Script=Han}/u,
+            Hangul: /\p{Script=Hangul}/u,
+            Latin: /\p{Script=Latin}/u,
+            Greek: /\p{Script=Greek}/u,
+            Cyrillic: /\p{Script=Cyrillic}/u,
+            Arabic: /\p{Script=Arabic}/u,
+            Hebrew: /\p{Script=Hebrew}/u,
+            Armenian: /\p{Script=Armenian}/u,
+            Georgian: /\p{Script=Georgian}/u,
+            Devanagari: /\p{Script=Devanagari}/u,
+            Bengali: /\p{Script=Bengali}/u,
+            Gurmukhi: /\p{Script=Gurmukhi}/u,
+            Gujarati: /\p{Script=Gujarati}/u,
+            Oriya: /\p{Script=Oriya}/u,
+            Tamil: /\p{Script=Tamil}/u,
+            Telugu: /\p{Script=Telugu}/u,
+            Kannada: /\p{Script=Kannada}/u,
+            Malayalam: /\p{Script=Malayalam}/u,
+            Sinhala: /\p{Script=Sinhala}/u,
+            Thai: /\p{Script=Thai}/u,
+            Lao: /\p{Script=Lao}/u,
+            Khmer: /\p{Script=Khmer}/u,
+            Myanmar: /\p{Script=Myanmar}/u,
+            Ethiopic: /\p{Script=Ethiopic}/u,
+            LowercaseLetter: /\p{Lowercase_Letter}/u,
+            UppercaseLetter: /\p{Uppercase_Letter}/u,
+            ModifierLetter: /\p{Modifier_Letter}/u,
+            Alphabetic: /\p{Alphabetic}/u,
+            Letter: /\p{Letter}/u,
+            DecimalNumber: /\p{Decimal_Number}/u,
+            Number: /\p{Number}/u,
+            Emoji: /\p{Extended_Pictographic}/u,
+            Symbol: /\p{Symbol}/u,
+            Punctuation: /\p{Punctuation}/u,
+            Control: /\p{Control}/u,
+            SpaceSeparator: /\p{Space_Separator}/u,
+            Separator: /\p{Separator}/u,
+            Yakumono: /[、。，．・：；？！…―ー〜～「」『』（）［］｛｝〈〉《》【】]/,
+            Whitespace: /\s/u,
+            InlineWhitespace: /[\p{Zs}\t]/u,
+            LineBreak: /(?:\r\n|[\n\r\u0085\u2028\u2029])/u,
         };
+        const CHAR_CLASS_REGISTRY = Object.keys(CHAR_CLASS_DEFINITIONS).reduce((acc, key) => {
+            acc[key] = new CharClass(key, CHAR_CLASS_DEFINITIONS[key]);
+            return acc;
+        }, {});
         for (const cls of Object.values(CHAR_CLASS_REGISTRY)) {
             Object.freeze(cls);
         }
@@ -682,6 +686,41 @@
             }
             addRule(rule, style) {
                 this.rules.push(rule);
+                this.styles.push(style);
+                return this;
+            }
+            resolve(text) {
+                let result = [];
+                for (let i = 0; i < this.rules.length; i++) {
+                    const ranges = annotateByRegExp(text, this.rules[i]);
+                    for (const { from, count } of ranges) {
+                        result.push({ from, count, style: this.styles[i] });
+                    }
+                }
+                result = normalizeRanges(result);
+                return result;
+            }
+        }
+        function createSearchRegExp(source, options) {
+            const { caseSensitive } = options;
+            const escape = (str) => str.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+            const pattern = Array.isArray(source) ? source.map(escape).join('|') : escape(source);
+            const flags = caseSensitive ? '' : 'i';
+            return new RegExp(pattern, flags);
+        }
+        class SearchTextStyleBuilder extends TextStyleBuilder {
+            rules = [];
+            styles = [];
+            options;
+            get defaultRule() {
+                return /[\s\S]+/;
+            }
+            constructor(options) {
+                super();
+                this.options = { ...{ caseSensitive: true }, ...options };
+            }
+            addRule(rule, style) {
+                this.rules.push(rule instanceof RegExp ? rule : createSearchRegExp(rule, this.options));
                 this.styles.push(style);
                 return this;
             }
@@ -1889,6 +1928,7 @@
                 // static
                 byCharClass: () => new CharClassTextStyleBuilder(),
                 byRegExp: () => new RegExpTextStyleBuilder(),
+                bySearch: (options) => new SearchTextStyleBuilder(options),
                 byPosition: () => new PositionTextStyleBuilder(),
                 byLine: () => new LineTextStyleBuilder(),
                 bySurrounding: (open, close, options) => new SurroundingTextStyleBuilder(open, close, options),
