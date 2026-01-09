@@ -207,41 +207,6 @@
             }
             throw new Error(`Invalid field: ${field}`);
         }
-        class AllTextStyleBuilder {
-            style;
-            constructor(style) {
-                this.style = style;
-            }
-            apply(property = thisLayer.text.sourceText, style = property.style) {
-                for (const field in this.style) {
-                    style = applyTextStyleAll(property, style, field, this.style[field]);
-                }
-                return style;
-            }
-            resolve(text) {
-                let result = [];
-                const style = {};
-                for (const field in this.style) {
-                    switch (field) {
-                        case "direction":
-                        case "firstLineIndent":
-                        case "isEveryLineComposer":
-                        case "isHangingRoman":
-                        case "justification":
-                        case "leadingType":
-                        case "leftMargin":
-                        case "rightMargin":
-                        case "spaceAfter":
-                        case "spaceBefore":
-                            break;
-                        default:
-                            style[field] = this.style[field];
-                    }
-                }
-                result.push({ from: 0, count: text.length, style });
-                return result;
-            }
-        }
         function applyTextLayoutField(style, field, value) {
             switch (field) {
                 case "direction":
@@ -336,9 +301,6 @@
                 style = applyStyleField(style, field, options[field], startIndex, numOfCharacters);
             }
             return style;
-        }
-        function isStyleOnly(a, b) {
-            return b === undefined;
         }
         function lowerBound(ranges, from) {
             let lo = 0;
@@ -498,24 +460,7 @@
             return result;
         }
         class TextStyleBuilder {
-            layoutOptions = {};
-            rule(a, b) {
-                if (isStyleOnly(a, b)) {
-                    return this.addRule(this.defaultRule, a);
-                }
-                else {
-                    return this.addRule(a, b);
-                }
-            }
-            layout(layout) {
-                this.layoutOptions = { ...this.layoutOptions, ...layout };
-                return this;
-            }
-            applyLayout(style) {
-                return applyTextLayout(style, this.layoutOptions);
-            }
             apply(property = thisLayer.text.sourceText, style = property.style) {
-                style = this.applyLayout(style);
                 for (const { from, count, style: st } of this.resolve(property.value)) {
                     style = applyStyle(style, st, from, count);
                 }
@@ -611,26 +556,19 @@
         class CharClassTextStyleBuilder extends TextStyleBuilder {
             rules = [];
             styles = [];
-            doExclusive = false;
-            get defaultRule() {
-                return /[\s\S]+/;
+            options;
+            constructor(options) {
+                super();
+                this.options = { mode: "overlap", ...options };
             }
-            exclusive() {
-                this.doExclusive = true;
-                return this;
-            }
-            overlay() {
-                this.doExclusive = false;
-                return this;
-            }
-            addRule(rule, style) {
+            rule(rule, style) {
                 this.rules.push(rule);
                 this.styles.push(style);
                 return this;
             }
             resolve(text) {
                 let result = [];
-                if (this.doExclusive) {
+                if (this.options.mode === "exclusive") {
                     const ranges = annotateByCharClassExclusive(text, this.rules);
                     for (const { from, count, index } of ranges) {
                         if (index < 0) {
@@ -681,10 +619,7 @@
         class RegExpTextStyleBuilder extends TextStyleBuilder {
             rules = [];
             styles = [];
-            get defaultRule() {
-                return /[\s\S]+/g;
-            }
-            addRule(rule, style) {
+            rule(rule, style) {
                 this.rules.push(rule);
                 this.styles.push(style);
                 return this;
@@ -712,14 +647,11 @@
             rules = [];
             styles = [];
             options;
-            get defaultRule() {
-                return /[\s\S]+/;
-            }
             constructor(options) {
                 super();
-                this.options = { ...{ caseSensitive: true }, ...options };
+                this.options = { caseSensitive: true, ...options };
             }
-            addRule(rule, style) {
+            rule(rule, style) {
                 this.rules.push(rule instanceof RegExp ? rule : createSearchRegExp(rule, this.options));
                 this.styles.push(style);
                 return this;
@@ -819,31 +751,19 @@
         class PositionTextStyleBuilder extends TextStyleBuilder {
             rules = [];
             styles = [];
-            doLine = false;
-            when = null;
-            get defaultRule() {
-                return { from: 0 };
+            options;
+            constructor(options) {
+                super();
+                this.options = { mode: "absolute", skipWhen: null, ...options };
             }
-            line() {
-                this.doLine = true;
-                return this;
-            }
-            global() {
-                this.doLine = false;
-                return this;
-            }
-            skipWhen(when) {
-                this.when = when;
-                return this;
-            }
-            addRule(rule, style) {
+            rule(rule, style) {
                 this.rules.push(rule);
                 this.styles.push(style);
                 return this;
             }
             resolve(text) {
                 let result = [];
-                const rangesList = this.doLine ? convertGraphemeRangesByLine(text, this.rules, this.when) : convertGraphemeRangesForText(text, this.rules, this.when);
+                const rangesList = this.options.mode === "line" ? convertGraphemeRangesByLine(text, this.rules, this.options.skipWhen) : convertGraphemeRangesForText(text, this.rules, this.options.skipWhen);
                 for (let i = 0; i < rangesList.length; i++) {
                     for (const { from, count } of rangesList[i]) {
                         result.push({ from, count, style: this.styles[i] });
@@ -898,10 +818,7 @@
         class LineTextStyleBuilder extends TextStyleBuilder {
             rules = [];
             styles = [];
-            get defaultRule() {
-                return { from: 0 };
-            }
-            addRule(rule, style) {
+            rule(rule, style) {
                 this.rules.push(rule);
                 this.styles.push(style);
                 return this;
@@ -928,89 +845,113 @@
                 return result;
             }
         }
-        function findNoneNested(text, open, close) {
-            const matches = [];
-            for (let i = 0; i < text.length;) {
-                if (text.startsWith(open, i)) {
-                    const start = i;
-                    const end = text.indexOf(close, i + open.length);
-                    if (end !== -1) {
-                        matches.push({
-                            open: start,
-                            close: end,
-                            depth: 0,
-                        });
-                        i = end + close.length;
-                        continue;
-                    }
-                }
-                i++;
-            }
-            return matches;
-        }
-        function findBalanced(text, open, close) {
+        function annotateBySurrounding(text, open, close) {
+            const entries = [];
+            let blockCounter = 0;
             const stack = [];
-            const matches = [];
-            for (let i = 0; i < text.length;) {
+            for (let i = 0; i < text.length; i++) {
                 if (text.startsWith(open, i)) {
-                    stack.push({ pos: i, depth: stack.length });
-                    i += open.length;
-                    continue;
+                    if (stack.length === 0)
+                        blockCounter++;
+                    const depth = stack.length + 1;
+                    const blockId = blockCounter;
+                    stack.push({ open: i, depth, blockId });
+                    i += open.length - 1;
                 }
-                if (text.startsWith(close, i) && stack.length > 0) {
+                else if (text.startsWith(close, i)) {
                     const last = stack.pop();
-                    matches.push({
-                        open: last.pos,
-                        close: i,
-                        depth: last.depth,
-                    });
-                    i += close.length;
-                    continue;
+                    if (last) {
+                        entries.push({
+                            open: last.open,
+                            close: i,
+                            depth: last.depth,
+                            blockId: last.blockId,
+                        });
+                    }
+                    i += close.length - 1;
                 }
-                i++;
             }
-            return matches;
+            if (entries.length === 0)
+                return [];
+            const blocks = new Map();
+            for (const e of entries) {
+                const b = blocks.get(e.blockId);
+                if (b)
+                    b.push(e);
+                else
+                    blocks.set(e.blockId, [e]);
+            }
+            const result = [];
+            for (const block of blocks.values()) {
+                const minDepth = Math.min(...block.map(e => e.depth));
+                const normalized = block.map(e => ({
+                    ...e,
+                    depth: e.depth - minDepth + 1,
+                }));
+                const maxDepth = Math.max(...normalized.map(e => e.depth));
+                normalized
+                    .sort((a, b) => a.depth - b.depth) // outer → inner
+                    .forEach(e => {
+                    result.push({
+                        from: e.open,
+                        count: e.close + close.length - e.open,
+                        depth: e.depth,
+                        maxDepth,
+                    });
+                });
+            }
+            return result;
         }
-        function matchToRanges(m, target, openLen, closeLen) {
+        function normalizeSurroundingRule(rule, defaultTarget) {
+            if (typeof rule === "number") {
+                return { depths: [rule], target: defaultTarget };
+            }
+            if (Array.isArray(rule)) {
+                return { depths: rule, target: defaultTarget };
+            }
+            return {
+                depths: Array.isArray(rule.depth) ? rule.depth : [rule.depth],
+                target: rule.target ?? defaultTarget,
+            };
+        }
+        function normalizeDepth(depth, maxDepth) {
+            const d = depth < 0 ? maxDepth + depth + 1 : depth;
+            if (d < 1 || d > maxDepth)
+                return null;
+            return d;
+        }
+        function expandTarget(range, target, openLen, closeLen) {
+            const { from, count } = range;
+            const end = from + count;
+            const openStart = from;
+            const openEnd = from + openLen;
+            const closeStart = end - closeLen;
+            const closeEnd = end;
+            const contentStart = openEnd;
+            const contentEnd = closeStart;
             switch (target) {
                 case "all":
-                    return [{
-                            from: m.open,
-                            count: m.close - m.open + closeLen,
-                        }];
-                case "content": {
-                    const from = m.open + openLen;
-                    const count = m.close - from;
-                    return [{ from, count: Math.max(0, count) }];
-                }
+                    return [{ from, count }];
+                case "content":
+                    return [{ from: contentStart, count: contentEnd - contentStart }];
                 case "delimiter":
-                    return [
-                        { from: m.open, count: openLen },
-                        { from: m.close, count: closeLen },
-                    ];
+                    return [{ from: openStart, count: openLen }, { from: closeStart, count: closeLen },];
                 case "open":
-                    return [{ from: m.open, count: openLen }];
+                    return [{ from: openStart, count: openLen }];
                 case "close":
-                    return [{ from: m.close, count: closeLen }];
+                    return [{ from: closeStart, count: closeLen }];
             }
         }
-        function annotateBySurrounding(text, open, close, options) {
-            const { target, nesting, depth, } = options;
-            const openLen = open.length;
-            const closeLen = close.length;
-            const matches = nesting === "none" ? findNoneNested(text, open, close) : findBalanced(text, open, close);
-            const filtered = matches.filter(m => {
-                if (depth == null)
-                    return true;
-                if (typeof depth === "number")
-                    return m.depth === depth;
-                return depth(m.depth);
-            });
-            const ranges = [];
-            for (const m of filtered) {
-                ranges.push(...matchToRanges(m, target, openLen, closeLen));
-            }
-            return mergeRanges(ranges);
+        function compileSurroundingRule(rule, defaultTarget, openLen, closeLen) {
+            const normalized = normalizeSurroundingRule(rule, defaultTarget);
+            return (range) => {
+                const hits = normalized.depths
+                    .map(d => normalizeDepth(d, range.maxDepth))
+                    .filter((d) => d !== null);
+                if (!hits.includes(range.depth))
+                    return [];
+                return expandTarget(range, normalized.target, openLen, closeLen);
+            };
         }
         class SurroundingTextStyleBuilder extends TextStyleBuilder {
             open;
@@ -1022,35 +963,24 @@
                 super();
                 this.open = open;
                 this.close = close;
-                this.options = { target: "content", nesting: "balanced", ...options };
+                this.options = { defaultTarget: "content", ...options };
             }
-            get defaultRule() {
-                return { from: 0 };
-            }
-            addRule(rule, style) {
+            rule(rule, style) {
                 this.rules.push(rule);
                 this.styles.push(style);
                 return this;
             }
             resolve(text) {
                 let result = [];
-                const surroudnings = annotateBySurrounding(text, this.open, this.close, this.options);
-                const interpretRule = (rule, style) => {
-                    const ranges = deriveRangesFromRangeRule(surroudnings, rule);
-                    for (const { from, count } of ranges) {
-                        if (count <= 0) {
-                            continue;
-                        }
-                        result.push({ from, count, style });
-                    }
-                };
-                for (let i = 0; i < this.rules.length; i++) {
-                    const rule = this.rules[i];
-                    if (Array.isArray(rule)) {
-                        rule.forEach(r => interpretRule(r, this.styles[i]));
-                    }
-                    else {
-                        interpretRule(rule, this.styles[i]);
+                const rules = this.rules.map(r => compileSurroundingRule(r, this.options.defaultTarget, this.open.length, this.close.length));
+                const surroudnings = annotateBySurrounding(text, this.open, this.close);
+                for (let i = 0; i < rules.length; i++) {
+                    const rule = rules[i];
+                    const style = this.styles[i];
+                    for (const surrounding of surroudnings) {
+                        rule(surrounding).forEach(({ from, count }) => {
+                            result.push({ from, count, style });
+                        });
                     }
                 }
                 result = normalizeRanges(result);
@@ -1256,10 +1186,7 @@
         class GraphemeTextStyleBuilder extends TextStyleBuilder {
             rules = [];
             styles = [];
-            get defaultRule() {
-                return () => true;
-            }
-            addRule(rule, style) {
+            rule(rule, style) {
                 if (typeof rule === "function") {
                     this.rules.push({ match: rule, initState: () => ({}) });
                 }
@@ -1381,14 +1308,11 @@
             locale;
             rules = [];
             styles = [];
-            get defaultRule() {
-                return () => ({ from: 0 });
-            }
             constructor(locale) {
                 super();
                 this.locale = locale;
             }
-            addRule(rule, style) {
+            rule(rule, style) {
                 this.rules.push(rule);
                 this.styles.push(style);
                 return this;
@@ -1490,14 +1414,11 @@
             locale;
             rules = [];
             styles = [];
-            get defaultRule() {
-                return () => ({ from: 0 });
-            }
             constructor(locale) {
                 super();
                 this.locale = locale;
             }
-            addRule(rule, style) {
+            rule(rule, style) {
                 this.rules.push(rule);
                 this.styles.push(style);
                 return this;
@@ -1549,7 +1470,7 @@
             constructor(fn, options) {
                 super();
                 this.fn = fn;
-                this.options = { ...{ iterations: 1, initState: () => ({}) }, ...options };
+                this.options = { initState: () => ({}), ...options };
             }
             resolve(text) {
                 let result = [];
@@ -1717,7 +1638,7 @@
             constructor(fn, options) {
                 super();
                 this.fn = fn;
-                this.options = { ...{ locale: DEFAULT_LOCALE }, ...options };
+                this.options = { locale: DEFAULT_LOCALE, ...options };
             }
             resolve(text) {
                 let result = [];
@@ -1778,7 +1699,7 @@
             constructor(fn, options) {
                 super();
                 this.fn = fn;
-                this.options = { ...{ locale: DEFAULT_LOCALE }, ...options };
+                this.options = { locale: DEFAULT_LOCALE, ...options };
             }
             resolve(text) {
                 let result = [];
@@ -1889,19 +1810,109 @@
                 return result;
             }
         }
-        class TextStyleComposer {
+        class ForEachSurrounding extends TextStyleApplier {
+            open;
+            close;
+            fn;
+            constructor(open, close, fn) {
+                super();
+                this.open = open;
+                this.close = close;
+                this.fn = fn;
+            }
+            resolve(text) {
+                let result = [];
+                const surroudnings = annotateBySurrounding(text, this.open, this.close);
+                const fn = this.fn;
+                surroudnings.forEach(({ from, count, depth, maxDepth }, globalIndex) => {
+                    const r = fn(text.substring(from, from + count), { depth, maxDepth });
+                    if (r) {
+                        applyRange(result, r, from, count);
+                    }
+                });
+                result = normalizeRanges(result);
+                return result;
+            }
+        }
+        class TextStyleContext {
+            globalStyle;
             builders = [];
-            layoutOptions = {};
-            add(builder) {
-                this.builders.push(builder);
+            constructor(globalStyle = {}) {
+                this.globalStyle = globalStyle;
+            }
+            rule(r, style) {
+                const builder = this.builders[this.builders.length - 1];
+                if (builder instanceof TextStyleBuilder) {
+                    builder.rule(r, style);
+                }
                 return this;
             }
-            layout(layout) {
-                this.layoutOptions = { ...this.layoutOptions, ...layout };
+            byCharClass(options) {
+                this.builders.push(new CharClassTextStyleBuilder(options));
+                return this;
+            }
+            byRegExp() {
+                this.builders.push(new RegExpTextStyleBuilder());
+                return this;
+            }
+            bySearch(options) {
+                this.builders.push(new SearchTextStyleBuilder(options));
+                return this;
+            }
+            byPosition(options) {
+                this.builders.push(new PositionTextStyleBuilder(options));
+                return this;
+            }
+            byLine() {
+                this.builders.push(new LineTextStyleBuilder());
+                return this;
+            }
+            bySurrounding(open, close, options) {
+                this.builders.push(new SurroundingTextStyleBuilder(open, close, options));
+                return this;
+            }
+            byGrapheme() {
+                this.builders.push(new GraphemeTextStyleBuilder());
+                return this;
+            }
+            byWord(locale) {
+                this.builders.push(new WordTextStyleBuilder(locale));
+                return this;
+            }
+            bySentence(locale) {
+                this.builders.push(new SentenceTextStyleBuilder(locale));
+                return this;
+            }
+            forEachLine(fn) {
+                this.builders.push(new ForEachLine(fn));
+                return this;
+            }
+            forEachGrapheme(fn, options) {
+                this.builders.push(new ForEachGrapheme(fn, options));
+                return this;
+            }
+            forEachWord(fn, options) {
+                this.builders.push(new ForEachWord(fn, options));
+                return this;
+            }
+            forEachSentence(fn, options) {
+                this.builders.push(new ForEachSentence(fn, options));
+                return this;
+            }
+            forEachRegExp(re, fn) {
+                this.builders.push(new ForEachRegExp(re, fn));
+                return this;
+            }
+            forEachSurrounding(open, close, fn) {
+                this.builders.push(new ForEachSurrounding(open, close, fn));
                 return this;
             }
             apply(property = thisLayer.text.sourceText, style = property.style) {
-                style = applyTextLayout(style, this.layoutOptions);
+                // global
+                for (const field in this.globalStyle) {
+                    style = applyTextStyleAll(property, style, field, this.globalStyle[field]);
+                }
+                // local
                 for (const { from, count, style: st } of this.resolve(property.value)) {
                     style = applyStyle(style, st, from, count);
                 }
@@ -1923,27 +1934,7 @@
         const lib = {
             CharClass: CHAR_CLASS_REGISTRY,
             createMatcher,
-            TextStyle: {
-                all: (style) => new AllTextStyleBuilder(style),
-                // static
-                byCharClass: () => new CharClassTextStyleBuilder(),
-                byRegExp: () => new RegExpTextStyleBuilder(),
-                bySearch: (options) => new SearchTextStyleBuilder(options),
-                byPosition: () => new PositionTextStyleBuilder(),
-                byLine: () => new LineTextStyleBuilder(),
-                bySurrounding: (open, close, options) => new SurroundingTextStyleBuilder(open, close, options),
-                byGrapheme: () => new GraphemeTextStyleBuilder(),
-                byWord: (locale = DEFAULT_LOCALE) => new WordTextStyleBuilder(locale),
-                bySentence: (locale = DEFAULT_LOCALE) => new SentenceTextStyleBuilder(locale),
-                // dynamic
-                forEachLine: (fn) => new ForEachLine(fn),
-                forEachGrapheme: (fn, options) => new ForEachGrapheme(fn, options),
-                forEachWord: (fn, options) => new ForEachWord(fn, options),
-                forEachSentence: (fn, options) => new ForEachSentence(fn, options),
-                forEachRegExp: (re, fn) => new ForEachRegExp(re, fn),
-                // compose
-                compose: () => new TextStyleComposer(),
-            },
+            TextStyle: (globalStyle) => new TextStyleContext(globalStyle),
             __internal: {
                 annotateByCharClass: annotateByCharClassExclusive
             },

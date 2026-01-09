@@ -17,7 +17,7 @@ declare namespace Atarabi {
         interface Lib {
             CharClass: CharClassMap;
             createMatcher: typeof createMatcher;
-            TextStyle: TextStyleRules;
+            TextStyle(globalStyle?: TextLayoutOptions | TextStyleOptions): TextStyleContext<TextStyleApplier>;
         }
 
         type CharClassKey =
@@ -114,16 +114,16 @@ declare namespace Atarabi {
         }
 
         interface TextStyleBuilder<Rule> extends TextStyleApplier {
-            rule(style: TextStyleOptions): this;
             rule(rule: Rule, style: TextStyleOptions): this;
-            layout(layout?: TextLayoutOptions): this;
         }
 
         type CharClassRule = CharMatchers;
 
+        type CharClassMode = "exclusive" | "overlap"; // default: "overlap"
+
+        type CharClassOptions = { mode?: CharClassMode; };
+
         interface CharClassTextStyleBuilder extends TextStyleBuilder<CharClassRule> {
-            exclusive(): this;
-            overlay(): this; // default
         }
 
         type SearchRule = string | string[];
@@ -144,12 +144,13 @@ declare namespace Atarabi {
 
         type PositionRule = PositionRuleItem | PositionRuleItem[];
 
+        type PositionMode = "absolute" | "line"; // default: "absolute"
+
         type SkipWhen = CharMatchers;
 
+        type PositionOptions = { mode?: PositionMode; skipWhen?: SkipWhen };
+
         interface PositionTextStyleBuilder extends TextStyleBuilder<PositionRule> {
-            line(): this;
-            global(): this; // default
-            skipWhen(when: SkipWhen): this;
         }
 
         type LineRule = RangeRule | RangeRule[];
@@ -157,15 +158,11 @@ declare namespace Atarabi {
         interface LineTextStyleBuilder extends TextStyleBuilder<LineRule> {
         }
 
-        type SurroundingRule = RangeRule | RangeRule[];
+        type SurroundingRule = number | number[] | { depth: number | number[]; target: SurroundingTarget; };
 
         type SurroundingTarget = "all" | "content" | "delimiter" | "open" | "close"; // default: "content"
 
-        type SurroundingNesting = "none" | "balanced"; // default: "balanced"
-
-        type SurroundingDepth = number | ((depth: number) => boolean);
-
-        type SurroundingOptions = { target?: SurroundingTarget; nesting?: SurroundingNesting; depth?: SurroundingDepth; };
+        type SurroundingOptions = { defaultTarget?: SurroundingTarget; };
 
         interface SurroundingTextStyleBuilder extends TextStyleBuilder<SurroundingRule> {
         }
@@ -240,11 +237,6 @@ declare namespace Atarabi {
         interface SentenceTextStyleBuilder extends TextStyleBuilder<SentenceRule> {
         }
 
-        interface TextStyleComposer extends TextStyleApplier {
-            add(builder: TextStyleApplier): this;
-            layout(layout: TextLayoutOptions): this;
-        }
-
         type ForEachLineFunc = (line: string, index: number, total: number) => TextStyleOptions | void;
 
         type ForEachGraphemeContext = GraphemeContext;
@@ -272,36 +264,35 @@ declare namespace Atarabi {
 
         type ForEachRegExpFunc = (match: RegExpExecArray, ctx: ForEachRegExpContext) => RangeWithStyle | RangeWithStyle[] | void;
 
-        interface TextStyleRules {
-            all(style: TextLayoutOptions | TextStyleOptions): TextStyleApplier;
+        interface ForEachSurroundingContext {
+            readonly depth: number;
+            readonly maxDepth: number;
+        }
+
+        type ForEachSurroundingFunc = (text: string, ctx: ForEachSurroundingContext) => RangeWithStyle | RangeWithStyle[] | void;
+
+        type TextStyleFacade = {
             // static
-            byCharClass(): CharClassTextStyleBuilder;
-            byRegExp(): RegExpTextStyleBuilder;
-            bySearch(options?: SearchOptions): SearchTextStyleBuilder;
-            byPosition(): PositionTextStyleBuilder;
-            byLine(): LineTextStyleBuilder;
-            bySurrounding(open: string, close: string, options?: SurroundingOptions): SurroundingTextStyleBuilder;
-            byGrapheme(): GraphemeTextStyleBuilder;
-            byWord(locale?: string): WordTextStyleBuilder;
-            bySentence(locale?: string): SentenceTextStyleBuilder;
+            byCharClass(options?: CharClassOptions): TextStyleContext<CharClassTextStyleBuilder>;
+            byRegExp(): TextStyleContext<RegExpTextStyleBuilder>;
+            bySearch(options?: SearchOptions): TextStyleContext<SearchTextStyleBuilder>;
+            byPosition(options?: PositionOptions): TextStyleContext<PositionTextStyleBuilder>;
+            byLine(): TextStyleContext<LineTextStyleBuilder>;
+            bySurrounding(open: string, close: string, options?: SurroundingOptions): TextStyleContext<SurroundingTextStyleBuilder>;
+            bySurrounding(open: string, close: string, options?: SurroundingOptions): TextStyleContext<SurroundingTextStyleBuilder>;
+            byGrapheme(): TextStyleContext<GraphemeTextStyleBuilder>;
+            byWord(locale?: string): TextStyleContext<WordTextStyleBuilder>;
+            bySentence(locale?: string): TextStyleContext<SentenceTextStyleBuilder>;
             // dynamic
-            forEachLine(fn: ForEachLineFunc): TextStyleApplier;
-            forEachGrapheme(fn: ForEachGraphemeFunc, options?: ForEachGraphemeOptions): TextStyleApplier;
-            forEachWord(fn: ForEachWordFunc, options?: ForEachWordOptions): TextStyleApplier;
-            forEachSentence(fn: ForEachSentenceFunc, options?: ForEachSentenceOptions): TextStyleApplier;
-            forEachRegExp(re: RegExp | RegExp[], fn: ForEachRegExpFunc): TextStyleApplier;
-            // compose
-            compose(): TextStyleComposer;
-        }
+            forEachLine(fn: ForEachLineFunc): TextStyleContext<TextStyleApplier>;
+            forEachGrapheme(fn: ForEachGraphemeFunc, options?: ForEachGraphemeOptions): TextStyleContext<TextStyleApplier>;
+            forEachWord(fn: ForEachWordFunc, options?: ForEachWordOptions): TextStyleContext<TextStyleApplier>;
+            forEachSentence(fn: ForEachSentenceFunc, options?: ForEachSentenceOptions): TextStyleContext<TextStyleApplier>;
+            forEachRegExp(re: RegExp | RegExp[], fn: ForEachRegExpFunc): TextStyleContext<TextStyleApplier>;
+            forEachSurrounding(open: string, close: string, fn: ForEachSurroundingFunc): TextStyleContext<TextStyleApplier>;
+        };
 
-        /** @internal */
-        interface Lib {
-            __internal: {
-                annotateByCharClass: typeof annotateByCharClass;
-            };
-        }
-
-        function annotateByCharClass(text: string, charClasses: (CharMatcher | CharMatcher[])[]): { from: number; count?: number; index: number; }[];
+        type TextStyleContext<Builder> = Builder & TextStyleFacade;
     }
 
 }

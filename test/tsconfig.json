@@ -10,6 +10,7 @@
 		"outDir": "./dest",
 	},
 	"include": [
+		"../types/**/*.d.ts",
 		"types/**/*.d.ts",
 		"src/**/*.tsx",
 		"src/**/*.jsx",

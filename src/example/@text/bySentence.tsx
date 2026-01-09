@@ -4,7 +4,7 @@ const { TextStyle } = footage("@text.jsx").sourceData.load();
 
 const kanjiRe = /^\p{Script=Han}/u;
 
-TextStyle.bySentence()
+TextStyle().bySentence()
     .rule((w, ctx) => {
         if (kanjiRe.test(w)) {
             return { from: 0, count: 1 };

@@ -231,39 +231,6 @@
             throw new Error(`Invalid field: ${field}`);
         }
 
-        class AllTextStyleBuilder implements Atarabi.text.TextStyleApplier {
-            constructor(public style: TextLayoutOptions | TextStyleOptions) { }
-            apply(property: TextProperty = thisLayer.text.sourceText, style: TextStyleProperty = property.style): TextStyleProperty {
-                for (const field in this.style) {
-                    style = applyTextStyleAll(property, style, field as keyof TextLayout | keyof TextStyle, this.style[field]);
-                }
-                return style;
-            }
-            resolve(text: string): RangeWithStyle[] {
-                let result: RangeWithStyle[] = [];
-                const style: TextStyleOptions = {};
-                for (const field in this.style) {
-                    switch (field) {
-                        case "direction":
-                        case "firstLineIndent":
-                        case "isEveryLineComposer":
-                        case "isHangingRoman":
-                        case "justification":
-                        case "leadingType":
-                        case "leftMargin":
-                        case "rightMargin":
-                        case "spaceAfter":
-                        case "spaceBefore":
-                            break;
-                        default:
-                            style[field] = this.style[field];
-                    }
-                }
-                result.push({ from: 0, count: text.length, style });
-                return result;
-            }
-        }
-
         function applyTextLayoutField<Field extends keyof TextLayout>(style: TextStyleProperty, field: Field, value: TextLayout[Field]): TextStyleProperty {
             switch (field) {
                 case "direction":
@@ -361,10 +328,6 @@
                 style = applyStyleField(style, field as keyof TextStyle, options[field], startIndex, numOfCharacters);
             }
             return style;
-        }
-
-        function isStyleOnly<Rule>(a: Rule | TextStyleOptions, b?: TextStyleOptions): a is TextStyleOptions {
-            return b === undefined;
         }
 
         function lowerBound(ranges: RangeWithStyle[], from: number): number {
@@ -557,25 +520,8 @@
         }
 
         abstract class TextStyleBuilder<Rule> implements Atarabi.text.TextStyleBuilder<Rule> {
-            protected abstract defaultRule: Rule;
-            protected layoutOptions: TextLayoutOptions = {};
-            rule(a: Rule | TextStyleOptions, b?: TextStyleOptions): this {
-                if (isStyleOnly(a, b)) {
-                    return this.addRule(this.defaultRule, a);
-                } else {
-                    return this.addRule(a, b);
-                }
-            }
-            protected abstract addRule(rule: Rule, options: TextStyleOptions): this;
-            layout(layout: TextLayoutOptions): this {
-                this.layoutOptions = { ...this.layoutOptions, ...layout };
-                return this;
-            }
-            protected applyLayout(style: TextStyleProperty): TextStyleProperty {
-                return applyTextLayout(style, this.layoutOptions);
-            }
+            abstract rule(a: Rule | TextStyleOptions, b?: TextStyleOptions): this
             apply(property: TextProperty = thisLayer.text.sourceText, style: TextStyleProperty = property.style): TextStyleProperty {
-                style = this.applyLayout(style);
                 for (const { from, count, style: st } of this.resolve(property.value)) {
                     style = applyStyle(style, st, from, count);
                 }
@@ -585,6 +531,7 @@
         }
 
         type CharClassRule = Atarabi.text.CharClassRule;
+        type CharClassOptions = Atarabi.text.CharClassOptions;
 
         function toRegExp(m: CharMatcher): RegExp | RegExp[] {
             if (typeof m === "string") {
@@ -685,26 +632,19 @@
         class CharClassTextStyleBuilder extends TextStyleBuilder<CharClassRule> implements Atarabi.text.CharClassTextStyleBuilder {
             protected rules: CharClassRule[] = [];
             protected styles: TextStyleOptions[] = [];
-            protected doExclusive: boolean = false;
-            protected get defaultRule(): CharClassRule {
-                return /[\s\S]+/;
+            protected options: CharClassOptions;
+            constructor(options?: CharClassOptions) {
+                super();
+                this.options = { mode: "overlap", ...options };
             }
-            exclusive(): this {
-                this.doExclusive = true;
-                return this;
-            }
-            overlay(): this {
-                this.doExclusive = false;
-                return this;
-            }
-            protected addRule(rule: CharClassRule, style: TextStyleOptions): this {
+            rule(rule: CharClassRule, style: TextStyleOptions): this {
                 this.rules.push(rule);
                 this.styles.push(style);
                 return this;
             }
             resolve(text: string): RangeWithStyle[] {
                 let result: RangeWithStyle[] = [];
-                if (this.doExclusive) {
+                if (this.options.mode === "exclusive") {
                     const ranges = annotateByCharClassExclusive(text, this.rules);
                     for (const { from, count, index } of ranges) {
                         if (index < 0) {
@@ -760,10 +700,7 @@
         class RegExpTextStyleBuilder extends TextStyleBuilder<RegExpRule> implements Atarabi.text.RegExpTextStyleBuilder {
             protected rules: RegExpRule[] = [];
             protected styles: TextStyleOptions[] = [];
-            protected get defaultRule(): RegExpRule {
-                return /[\s\S]+/g;
-            }
-            protected addRule(rule: RegExpRule, style: TextStyleOptions): this {
+            rule(rule: RegExpRule, style: TextStyleOptions): this {
                 this.rules.push(rule);
                 this.styles.push(style);
                 return this;
@@ -796,14 +733,11 @@
             protected rules: RegExpRule[] = [];
             protected styles: TextStyleOptions[] = [];
             protected options: SearchOptions;
-            protected get defaultRule(): SearchRule {
-                return /[\s\S]+/ as any;
-            }
             constructor(options?: SearchOptions) {
                 super();
-                this.options = { ...{ caseSensitive: true }, ...options };
+                this.options = { caseSensitive: true, ...options };
             }
-            protected addRule(rule: SearchRule, style: TextStyleOptions): this {
+            rule(rule: SearchRule, style: TextStyleOptions): this {
                 this.rules.push(rule instanceof RegExp ? rule : createSearchRegExp(rule, this.options));
                 this.styles.push(style);
                 return this;
@@ -823,6 +757,8 @@
 
         type PositionRuleItem = Atarabi.text.PositionRuleItem;
         type PositionRule = Atarabi.text.PositionRule;
+        type PositionMode = Atarabi.text.PositionMode;
+        type PositionOptions = Atarabi.text.PositionOptions;
         type SkipWhen = Atarabi.text.SkipWhen;
 
         function convertGraphemeRangesForText(text: string, rules: PositionRule[], skipWhen: SkipWhen, line: number = 0): Range[][] {
@@ -915,31 +851,19 @@
         class PositionTextStyleBuilder extends TextStyleBuilder<PositionRule> implements Atarabi.text.PositionTextStyleBuilder {
             protected rules: PositionRule[] = [];
             protected styles: TextStyleOptions[] = [];
-            protected doLine: boolean = false;
-            protected when: SkipWhen = null;
-            protected get defaultRule(): PositionRule {
-                return { from: 0 };
+            protected options: PositionOptions;
+            constructor(options?: PositionOptions) {
+                super();
+                this.options = { mode: "absolute", skipWhen: null, ...options };
             }
-            line(): this {
-                this.doLine = true;
-                return this;
-            }
-            global(): this {
-                this.doLine = false;
-                return this;
-            }
-            skipWhen(when: Atarabi.text.SkipWhen): this {
-                this.when = when;
-                return this;
-            }
-            protected addRule(rule: PositionRule, style: TextStyleOptions): this {
+            rule(rule: PositionRule, style: TextStyleOptions): this {
                 this.rules.push(rule);
                 this.styles.push(style);
                 return this;
             }
             resolve(text: string): RangeWithStyle[] {
                 let result: RangeWithStyle[] = [];
-                const rangesList = this.doLine ? convertGraphemeRangesByLine(text, this.rules, this.when) : convertGraphemeRangesForText(text, this.rules, this.when);
+                const rangesList = this.options.mode === "line" ? convertGraphemeRangesByLine(text, this.rules, this.options.skipWhen) : convertGraphemeRangesForText(text, this.rules, this.options.skipWhen);
                 for (let i = 0; i < rangesList.length; i++) {
                     for (const { from, count } of rangesList[i]) {
                         result.push({ from, count, style: this.styles[i] });
@@ -1002,10 +926,7 @@
         class LineTextStyleBuilder extends TextStyleBuilder<LineRule> implements Atarabi.text.LineTextStyleBuilder {
             protected rules: LineRule[] = [];
             protected styles: TextStyleOptions[] = [];
-            protected get defaultRule(): LineRule {
-                return { from: 0 };
-            }
-            protected addRule(rule: LineRule, style: TextStyleOptions): this {
+            rule(rule: LineRule, style: TextStyleOptions): this {
                 this.rules.push(rule);
                 this.styles.push(style);
                 return this;
@@ -1036,104 +957,146 @@
         type SurroundingOptions = Atarabi.text.SurroundingOptions;
         type SurroundingRule = Atarabi.text.SurroundingRule;
 
-        interface SurroundingMatch {
-            open: number;
-            close: number;
-            depth: number;
-        }
+        type RangeWithDepth = { from: number; count: number; depth: number; maxDepth: number };
 
-        function findNoneNested(text: string, open: string, close: string): SurroundingMatch[] {
-            const matches: SurroundingMatch[] = [];
+        function annotateBySurrounding(text: string, open: string, close: string): RangeWithDepth[] {
+            type Entry = {
+                open: number;
+                close: number;
+                depth: number;
+                blockId: number;
+            };
 
-            for (let i = 0; i < text.length;) {
+            type StackEntry = {
+                open: number;
+                depth: number;
+                blockId: number;
+            };
+
+            const entries: Entry[] = [];
+
+            let blockCounter = 0;
+            const stack: StackEntry[] = [];
+
+            for (let i = 0; i < text.length; i++) {
                 if (text.startsWith(open, i)) {
-                    const start = i;
-                    const end = text.indexOf(close, i + open.length);
-                    if (end !== -1) {
-                        matches.push({
-                            open: start,
-                            close: end,
-                            depth: 0,
+                    if (stack.length === 0) blockCounter++;
+
+                    const depth = stack.length + 1;
+                    const blockId = blockCounter;
+
+                    stack.push({ open: i, depth, blockId });
+                    i += open.length - 1;
+                } else if (text.startsWith(close, i)) {
+                    const last = stack.pop();
+                    if (last) {
+                        entries.push({
+                            open: last.open,
+                            close: i,
+                            depth: last.depth,
+                            blockId: last.blockId,
                         });
-                        i = end + close.length;
-                        continue;
                     }
+                    i += close.length - 1;
                 }
-                i++;
+            }
+            if (entries.length === 0) return [];
+
+            const blocks = new Map<number, Entry[]>();
+            for (const e of entries) {
+                const b = blocks.get(e.blockId);
+                if (b) b.push(e);
+                else blocks.set(e.blockId, [e]);
             }
 
-            return matches;
-        }
+            const result: RangeWithDepth[] = [];
 
-        function findBalanced(text: string, open: string, close: string): SurroundingMatch[] {
-            const stack: { pos: number; depth: number }[] = [];
-            const matches: SurroundingMatch[] = [];
+            for (const block of blocks.values()) {
+                const minDepth = Math.min(...block.map(e => e.depth));
+                const normalized = block.map(e => ({
+                    ...e,
+                    depth: e.depth - minDepth + 1,
+                }));
+                const maxDepth = Math.max(...normalized.map(e => e.depth));
 
-            for (let i = 0; i < text.length;) {
-                if (text.startsWith(open, i)) {
-                    stack.push({ pos: i, depth: stack.length });
-                    i += open.length;
-                    continue;
-                }
-
-                if (text.startsWith(close, i) && stack.length > 0) {
-                    const last = stack.pop()!;
-                    matches.push({
-                        open: last.pos,
-                        close: i,
-                        depth: last.depth,
+                normalized
+                    .sort((a, b) => a.depth - b.depth) // outer → inner
+                    .forEach(e => {
+                        result.push({
+                            from: e.open,
+                            count: e.close + close.length - e.open,
+                            depth: e.depth,
+                            maxDepth,
+                        });
                     });
-                    i += close.length;
-                    continue;
-                }
-
-                i++;
             }
 
-            return matches;
+            return result;
         }
 
-        function matchToRanges(m: SurroundingMatch, target: SurroundingTarget, openLen: number, closeLen: number): Range[] {
+        function normalizeSurroundingRule(rule: SurroundingRule, defaultTarget: SurroundingTarget): { depths: number[]; target: SurroundingTarget } {
+            if (typeof rule === "number") {
+                return { depths: [rule], target: defaultTarget };
+            }
+
+            if (Array.isArray(rule)) {
+                return { depths: rule, target: defaultTarget };
+            }
+
+            return {
+                depths: Array.isArray(rule.depth) ? rule.depth : [rule.depth],
+                target: rule.target ?? defaultTarget,
+            };
+        }
+
+        function normalizeDepth(depth: number, maxDepth: number): number | null {
+            const d = depth < 0 ? maxDepth + depth + 1 : depth;
+            if (d < 1 || d > maxDepth) return null;
+            return d;
+        }
+
+        function expandTarget(range: RangeWithDepth, target: SurroundingTarget, openLen: number, closeLen: number): Range[] {
+            const { from, count } = range;
+            const end = from + count;
+
+            const openStart = from;
+            const openEnd = from + openLen;
+
+            const closeStart = end - closeLen;
+            const closeEnd = end;
+
+            const contentStart = openEnd;
+            const contentEnd = closeStart;
+
             switch (target) {
                 case "all":
-                    return [{
-                        from: m.open,
-                        count: m.close - m.open + closeLen,
-                    }];
-                case "content": {
-                    const from = m.open + openLen;
-                    const count = m.close - from;
-                    return [{ from, count: Math.max(0, count) }];
-                }
+                    return [{ from, count }];
+                case "content":
+                    return [{ from: contentStart, count: contentEnd - contentStart }];
+
                 case "delimiter":
-                    return [
-                        { from: m.open, count: openLen },
-                        { from: m.close, count: closeLen },
-                    ];
+                    return [{ from: openStart, count: openLen }, { from: closeStart, count: closeLen },];
+
                 case "open":
-                    return [{ from: m.open, count: openLen }];
+                    return [{ from: openStart, count: openLen }];
+
                 case "close":
-                    return [{ from: m.close, count: closeLen }];
+                    return [{ from: closeStart, count: closeLen }];
             }
         }
 
-        function annotateBySurrounding(text: string, open: string, close: string, options: SurroundingOptions): Range[] {
-            const { target, nesting, depth, } = options;
-            const openLen = open.length;
-            const closeLen = close.length;
-            const matches = nesting === "none" ? findNoneNested(text, open, close) : findBalanced(text, open, close);
-            const filtered = matches.filter(m => {
-                if (depth == null) return true;
-                if (typeof depth === "number") return m.depth === depth;
-                return depth(m.depth);
-            });
+        function compileSurroundingRule(rule: SurroundingRule, defaultTarget: SurroundingTarget, openLen: number, closeLen: number): (range: RangeWithDepth) => Range[] {
+            const normalized = normalizeSurroundingRule(rule, defaultTarget);
 
-            const ranges: Range[] = [];
-            for (const m of filtered) {
-                ranges.push(...matchToRanges(m, target, openLen, closeLen));
-            }
+            return (range: RangeWithDepth): Range[] => {
+                const hits = normalized.depths
+                    .map(d => normalizeDepth(d, range.maxDepth))
+                    .filter((d): d is number => d !== null);
 
-            return mergeRanges(ranges);
+                if (!hits.includes(range.depth)) return [];
+
+                return expandTarget(range, normalized.target, openLen, closeLen);
+            };
         }
 
         class SurroundingTextStyleBuilder extends TextStyleBuilder<SurroundingRule> implements Atarabi.text.SurroundingTextStyleBuilder {
@@ -1142,34 +1105,24 @@
             protected styles: TextStyleOptions[] = [];
             constructor(protected open: string, protected close: string, options?: SurroundingOptions) {
                 super();
-                this.options = { target: "content", nesting: "balanced", ...options };
+                this.options = { defaultTarget: "content", ...options };
             }
-            protected get defaultRule(): LineRule {
-                return { from: 0 };
-            }
-            protected addRule(rule: SurroundingRule, style: TextStyleOptions): this {
+            rule(rule: SurroundingRule, style: TextStyleOptions): this {
                 this.rules.push(rule);
                 this.styles.push(style);
                 return this;
             }
             resolve(text: string): RangeWithStyle[] {
                 let result: RangeWithStyle[] = [];
-                const surroudnings = annotateBySurrounding(text, this.open, this.close, this.options);
-                const interpretRule = (rule: RangeRule, style: TextStyleOptions) => {
-                    const ranges = deriveRangesFromRangeRule(surroudnings, rule);
-                    for (const { from, count } of ranges) {
-                        if (count <= 0) {
-                            continue;
-                        }
-                        result.push({ from, count, style });
-                    }
-                };
-                for (let i = 0; i < this.rules.length; i++) {
-                    const rule = this.rules[i];
-                    if (Array.isArray(rule)) {
-                        rule.forEach(r => interpretRule(r, this.styles[i]));
-                    } else {
-                        interpretRule(rule, this.styles[i]);
+                const rules = this.rules.map(r => compileSurroundingRule(r, this.options.defaultTarget, this.open.length, this.close.length));
+                const surroudnings = annotateBySurrounding(text, this.open, this.close);
+                for (let i = 0; i < rules.length; i++) {
+                    const rule = rules[i];
+                    const style = this.styles[i];
+                    for (const surrounding of surroudnings) {
+                        rule(surrounding).forEach(({ from, count }) => {
+                            result.push({ from, count, style })
+                        });
                     }
                 }
                 result = normalizeRanges(result);
@@ -1395,10 +1348,7 @@
         class GraphemeTextStyleBuilder extends TextStyleBuilder<GraphemeRule> implements Atarabi.text.GraphemeTextStyleBuilder {
             protected rules: GraphemeRuleItem[] = [];
             protected styles: TextStyleOptions[] = [];
-            protected get defaultRule(): GraphemeRule {
-                return () => true;
-            }
-            protected addRule(rule: GraphemeRule, style: TextStyleOptions): this {
+            rule(rule: GraphemeRule, style: TextStyleOptions): this {
                 if (typeof rule === "function") {
                     this.rules.push({ match: rule, initState: () => ({}) });
                 } else {
@@ -1537,13 +1487,10 @@
         class WordTextStyleBuilder extends TextStyleBuilder<WordRule> implements Atarabi.text.WordTextStyleBuilder {
             protected rules: WordRule[] = [];
             protected styles: TextStyleOptions[] = [];
-            protected get defaultRule(): WordRule {
-                return () => ({ from: 0 });
-            }
             constructor(private locale: string) {
                 super();
             }
-            protected addRule(rule: WordRule, style: TextStyleOptions): this {
+            rule(rule: WordRule, style: TextStyleOptions): this {
                 this.rules.push(rule);
                 this.styles.push(style);
                 return this;
@@ -1661,13 +1608,10 @@
         class SentenceTextStyleBuilder extends TextStyleBuilder<SentenceRule> implements Atarabi.text.SentenceTextStyleBuilder {
             protected rules: SentenceRule[] = [];
             protected styles: TextStyleOptions[] = [];
-            protected get defaultRule(): SentenceRule {
-                return () => ({ from: 0 });
-            }
             constructor(private locale: string) {
                 super();
             }
-            protected addRule(rule: SentenceRule, style: TextStyleOptions): this {
+            rule(rule: SentenceRule, style: TextStyleOptions): this {
                 this.rules.push(rule);
                 this.styles.push(style);
                 return this;
@@ -1724,7 +1668,7 @@
             protected options: ForEachGraphemeOptions;
             constructor(public fn: ForEachGraphemeFunc, options?: ForEachGraphemeOptions) {
                 super();
-                this.options = { ...{ iterations: 1, initState: () => ({}) }, ...options };
+                this.options = { initState: () => ({}), ...options };
             }
             resolve(text: string): RangeWithStyle[] {
                 let result: RangeWithStyle[] = [];
@@ -1886,7 +1830,7 @@
             protected options: ForEachWordOptions;
             constructor(public fn: ForEachWordFunc, options?: ForEachWordOptions) {
                 super();
-                this.options = { ...{ locale: DEFAULT_LOCALE }, ...options };
+                this.options = { locale: DEFAULT_LOCALE, ...options };
             }
             resolve(text: string): RangeWithStyle[] {
                 let result: RangeWithStyle[] = [];
@@ -1952,7 +1896,7 @@
             protected options: ForEachSentenceOptions;
             constructor(public fn: ForEachSentenceFunc, options?: ForEachSentenceOptions) {
                 super();
-                this.options = { ...{ locale: DEFAULT_LOCALE }, ...options };
+                this.options = { locale: DEFAULT_LOCALE, ...options };
             }
             resolve(text: string): RangeWithStyle[] {
                 let result: RangeWithStyle[] = [];
@@ -2079,19 +2023,108 @@
             }
         }
 
-        class TextStyleComposer implements Atarabi.text.TextStyleComposer {
-            protected builders: Atarabi.text.TextStyleApplier[] = [];
-            protected layoutOptions: TextLayoutOptions = {};
-            add(builder: Atarabi.text.TextStyleApplier): this {
-                this.builders.push(builder);
+        type ForEachSurroundingFunc = Atarabi.text.ForEachSurroundingFunc;
+
+        class ForEachSurrounding extends TextStyleApplier implements Atarabi.text.TextStyleApplier {
+            constructor(public open: string, public close: string, public fn: ForEachSurroundingFunc) {
+                super();
+            }
+            resolve(text: string): RangeWithStyle[] {
+                let result: RangeWithStyle[] = [];
+
+                const surroudnings = annotateBySurrounding(text, this.open, this.close);
+                const fn = this.fn;
+
+                surroudnings.forEach(({ from, count, depth, maxDepth }, globalIndex) => {
+                    const r = fn(text.substring(from, from + count), { depth, maxDepth });
+                    if (r) {
+                        applyRange(result, r, from, count);
+                    }
+                });
+
+                result = normalizeRanges(result);
+
+                return result;
+            }
+        }
+
+        class TextStyleContext implements TextStyleApplier, Atarabi.text.TextStyleFacade {
+            protected builders: (TextStyleBuilder<any> | TextStyleApplier)[] = [];
+            constructor(public globalStyle: TextLayoutOptions | TextStyleOptions = {}) {
+            }
+            rule<Rule>(r: Rule, style: TextStyleOptions): this {
+                const builder = this.builders[this.builders.length - 1];
+                if (builder instanceof TextStyleBuilder) {
+                    builder.rule(r, style);
+                }
                 return this;
             }
-            layout(layout: TextLayoutOptions): this {
-                this.layoutOptions = { ...this.layoutOptions, ...layout };
+            byCharClass(options?: CharClassOptions): this {
+                this.builders.push(new CharClassTextStyleBuilder(options));
+                return this;
+            }
+            byRegExp(): this {
+                this.builders.push(new RegExpTextStyleBuilder());
+                return this;
+            }
+            bySearch(options?: SearchOptions): this {
+                this.builders.push(new SearchTextStyleBuilder(options));
+                return this;
+            }
+            byPosition(options?: PositionOptions): this {
+                this.builders.push(new PositionTextStyleBuilder(options));
+                return this;
+            }
+            byLine(): this {
+                this.builders.push(new LineTextStyleBuilder());
+                return this;
+            }
+            bySurrounding(open: string, close: string, options?: SurroundingOptions): this {
+                this.builders.push(new SurroundingTextStyleBuilder(open, close, options));
+                return this;
+            }
+            byGrapheme(): this {
+                this.builders.push(new GraphemeTextStyleBuilder());
+                return this;
+            }
+            byWord(locale: string): this {
+                this.builders.push(new WordTextStyleBuilder(locale));
+                return this;
+            }
+            bySentence(locale: string): this {
+                this.builders.push(new SentenceTextStyleBuilder(locale));
+                return this;
+            }
+            forEachLine(fn: ForEachLineFunc): this {
+                this.builders.push(new ForEachLine(fn));
+                return this;
+            }
+            forEachGrapheme(fn: ForEachGraphemeFunc, options?: ForEachGraphemeOptions): this {
+                this.builders.push(new ForEachGrapheme(fn, options));
+                return this;
+            }
+            forEachWord(fn: ForEachWordFunc, options?: ForEachWordOptions): this {
+                this.builders.push(new ForEachWord(fn, options));
+                return this;
+            }
+            forEachSentence(fn: ForEachSentenceFunc, options?: ForEachSentenceOptions): this {
+                this.builders.push(new ForEachSentence(fn, options));
+                return this;
+            }
+            forEachRegExp(re: RegExp | RegExp[], fn: ForEachRegExpFunc): this {
+                this.builders.push(new ForEachRegExp(re, fn));
+                return this;
+            }
+            forEachSurrounding(open: string, close: string, fn: ForEachSurroundingFunc): this {
+                this.builders.push(new ForEachSurrounding(open, close, fn));
                 return this;
             }
             apply(property: TextProperty = thisLayer.text.sourceText, style: TextStyleProperty = property.style): TextStyleProperty {
-                style = applyTextLayout(style, this.layoutOptions);
+                // global
+                for (const field in this.globalStyle) {
+                    style = applyTextStyleAll(property, style, field as keyof TextLayout | keyof TextStyle, this.globalStyle[field]);
+                }
+                // local
                 for (const { from, count, style: st } of this.resolve(property.value)) {
                     style = applyStyle(style, st, from, count);
                 }
@@ -2113,31 +2146,15 @@
         const lib = {
             CharClass: CHAR_CLASS_REGISTRY,
             createMatcher,
-            TextStyle: {
-                all: (style: TextLayoutOptions | TextStyleOptions) => new AllTextStyleBuilder(style),
-                // static
-                byCharClass: () => new CharClassTextStyleBuilder(),
-                byRegExp: () => new RegExpTextStyleBuilder(),
-                bySearch: (options?: SearchOptions) => new SearchTextStyleBuilder(options),
-                byPosition: () => new PositionTextStyleBuilder(),
-                byLine: () => new LineTextStyleBuilder(),
-                bySurrounding: (open: string, close: string, options?: SurroundingOptions) => new SurroundingTextStyleBuilder(open, close, options),
-                byGrapheme: () => new GraphemeTextStyleBuilder(),
-                byWord: (locale = DEFAULT_LOCALE) => new WordTextStyleBuilder(locale),
-                bySentence: (locale = DEFAULT_LOCALE) => new SentenceTextStyleBuilder(locale),
-                // dynamic
-                forEachLine: (fn: ForEachLineFunc) => new ForEachLine(fn),
-                forEachGrapheme: (fn: ForEachGraphemeFunc, options?: ForEachGraphemeOptions) => new ForEachGrapheme(fn, options),
-                forEachWord: (fn: ForEachWordFunc, options?: ForEachWordOptions) => new ForEachWord(fn, options),
-                forEachSentence: (fn: ForEachSentenceFunc, options?: ForEachSentenceOptions) => new ForEachSentence(fn, options),
-                forEachRegExp: (re: RegExp | RegExp[], fn: ForEachRegExpFunc) => new ForEachRegExp(re, fn),
-                // compose
-                compose: () => new TextStyleComposer(),
-            },
+            TextStyle: (globalStyle?: TextLayoutOptions | TextStyleOptions) => new TextStyleContext(globalStyle),
             __internal: {
                 annotateByCharClass: annotateByCharClassExclusive
             },
-        } satisfies Atarabi.text.Lib;
+        } satisfies Atarabi.text.Lib & {
+            __internal: {
+                annotateByCharClass: typeof annotateByCharClassExclusive,
+            }
+        };
 
         LIB.text = lib;
 

@@ -32,5 +32,4 @@ async function removeTrailingSemicolon(path) {
 }
 
 await walk("dest/example", p => p.endsWith(".jsx"), removeExport);
-await walk("dest/test", p => p.endsWith(".jsx"), removeExport);
 await walk("dest/lib", p => p.endsWith(".jsx"), removeTrailingSemicolon);

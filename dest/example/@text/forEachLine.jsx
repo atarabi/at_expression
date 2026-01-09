@@ -1,5 +1,5 @@
 const { TextStyle } = footage("@text.jsx").sourceData.load();
-TextStyle.forEachLine((line, index, total) => {
+TextStyle().forEachLine((line, index, total) => {
     if (index % 2 === 0) {
         return { applyFill: true, applyStroke: false, fillColor: [0.8, 0.4, 0.2] };
     }

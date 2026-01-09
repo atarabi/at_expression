@@ -1,5 +1,5 @@
 const { TextStyle } = footage("@text.jsx").sourceData.load();
-TextStyle.all({
+TextStyle({
     tsume: 10,
     fontSize: 100,
     isFauxBold: true,
