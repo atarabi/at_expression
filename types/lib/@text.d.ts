@@ -91,16 +91,48 @@ declare namespace Atarabi {
 
         function createMatcher(matchers: CharMatchers): CharPredicate;
 
-        type TextLayoutKeys = "direction" | "firstLineIndent" | "isEveryLineComposer" | "isHangingRoman" | "justification" | "leadingType" | "leftMargin" | "rightMargin" | "spaceAfter" | "spaceBefore";
-
-        type TextLayout = Pick<Fields<TextStyleProperty>, TextLayoutKeys>;
+        interface TextLayout {
+            direction: "left-to-right" | "right-to-left";
+            firstLineIndent: number;
+            isEveryLineComposer: boolean;
+            isHangingRoman: boolean;
+            justification: "alignCenter" | "alignLeft" | "alignRight" | "justifyFull" | "justifyLastCenter" | "justifyLastLeft" | "justifyLastRight";
+            leadingType: "bottom-to-bottom" | "top-to-top";
+            leftMargin: number;
+            rightMargin: number;
+            spaceAfter: number;
+            spaceBefore: number;
+        }
 
         type TextLayoutOptions = Partial<TextLayout>;
 
-        type TextStyle = Omit<
-            Fields<TextStyleProperty>,
-            keyof Fields<Property> | TextLayoutKeys
-        >;
+        interface TextStyle {
+            applyFill: boolean;
+            applyStroke: boolean;
+            baselineDirection: "default" | "rotated" | "tate-chuu-yoko";
+            baselineOption: "default" | "subscript" | "superscript";
+            baselineShift: number;
+            digitSet: "default" | "hindidigits";
+            fillColor: [red: number, green: number, blue: number];
+            font: string;
+            fontSize: number;
+            horizontalScaling: number;
+            isAllCaps: boolean;
+            isAutoLeading: boolean;
+            isFauxBold: boolean;
+            isFauxItalic: boolean;
+            isLigature: boolean;
+            isSmallCaps: boolean;
+            kerning: number;
+            kerningType: "manual" | "metrics" | "optical";
+            leading: number;
+            lineJoin: "bevel" | "miter" | "round";
+            strokeColor: [red: number, green: number, blue: number];
+            strokeWidth: number;
+            tracking: number;
+            tsume: number;
+            verticalScaling: number;
+        }
 
         type TextStyleOptions = Partial<TextStyle>;
 
