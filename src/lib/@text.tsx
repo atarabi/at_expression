@@ -152,6 +152,10 @@
         type TextStyle = Atarabi.text.TextStyle;
         type TextStyleOptions = Atarabi.text.TextStyleOptions;
 
+        function replaceText(style: TextStyleProperty, text: string) {
+            return style.replaceText(text);
+        }
+
         function applyTextStyleAll<FieldL extends keyof TextLayout, FieldS extends keyof TextStyle>(property: TextProperty, style: TextStyleProperty, field: FieldL | FieldS, value: TextLayout[FieldL] | TextStyle[FieldS]): TextStyleProperty {
             switch (field) {
                 case "direction":
@@ -2048,9 +2052,16 @@
             }
         }
 
-        class TextStyleContext implements TextStyleApplier, Atarabi.text.TextStyleFacade {
+        type TextTransformContext = Atarabi.text.TextTransformContext;
+
+        class TextStyleContext implements TextStyleApplier, Atarabi.text.TextStyleFacade, Atarabi.text.TextTransformer {
             protected builders: (TextStyleBuilder<any> | TextStyleApplier)[] = [];
             constructor(public globalStyle: TextLayoutOptions | TextStyleOptions = {}) {
+            }
+            protected transformers: ((text: string, ctx: TextTransformContext) => string)[] = [];
+            transform(fn: (text: string, ctx: TextTransformContext) => string): this {
+                this.transformers.push(fn);
+                return this;
             }
             rule<Rule>(r: Rule, style: TextStyleOptions): this {
                 const builder = this.builders[this.builders.length - 1];
@@ -2120,12 +2131,18 @@
                 return this;
             }
             apply(property: TextProperty = thisLayer.text.sourceText, style: TextStyleProperty = property.style): TextStyleProperty {
+                // transform
+                const original = property.value;
+                const text = this.transformers.reduce((acc, fn) => fn(acc, {original}), original);
+                if (this.transformers.length && text !== original) {
+                    style = replaceText(style, text);
+                }
                 // global
                 for (const field in this.globalStyle) {
                     style = applyTextStyleAll(property, style, field as keyof TextLayout | keyof TextStyle, this.globalStyle[field]);
                 }
                 // local
-                for (const { from, count, style: st } of this.resolve(property.value)) {
+                for (const { from, count, style: st } of this.resolve(text)) {
                     style = applyStyle(style, st, from, count);
                 }
                 return style;

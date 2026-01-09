@@ -129,6 +129,9 @@
             }
             return result;
         }
+        function replaceText(style, text) {
+            return style.replaceText(text);
+        }
         function applyTextStyleAll(property, style, field, value) {
             switch (field) {
                 case "direction":
@@ -1840,6 +1843,11 @@
             constructor(globalStyle = {}) {
                 this.globalStyle = globalStyle;
             }
+            transformers = [];
+            transform(fn) {
+                this.transformers.push(fn);
+                return this;
+            }
             rule(r, style) {
                 const builder = this.builders[this.builders.length - 1];
                 if (builder instanceof TextStyleBuilder) {
@@ -1908,12 +1916,18 @@
                 return this;
             }
             apply(property = thisLayer.text.sourceText, style = property.style) {
+                // transform
+                const original = property.value;
+                const text = this.transformers.reduce((acc, fn) => fn(acc, { original }), original);
+                if (this.transformers.length && text !== original) {
+                    style = replaceText(style, text);
+                }
                 // global
                 for (const field in this.globalStyle) {
                     style = applyTextStyleAll(property, style, field, this.globalStyle[field]);
                 }
                 // local
-                for (const { from, count, style: st } of this.resolve(property.value)) {
+                for (const { from, count, style: st } of this.resolve(text)) {
                     style = applyStyle(style, st, from, count);
                 }
                 return style;

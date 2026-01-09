@@ -17,7 +17,7 @@ declare namespace Atarabi {
         interface Lib {
             CharClass: CharClassMap;
             createMatcher: typeof createMatcher;
-            TextStyle(globalStyle?: TextLayoutOptions | TextStyleOptions): TextStyleContext<TextStyleApplier>;
+            TextStyle(globalStyle?: TextLayoutOptions | TextStyleOptions): TextStyleContext<TextStyleApplier> & TextTransformer;
         }
 
         type CharClassKey =
@@ -302,6 +302,14 @@ declare namespace Atarabi {
         }
 
         type ForEachSurroundingFunc = (text: string, ctx: ForEachSurroundingContext) => RangeWithStyle | RangeWithStyle[] | void;
+
+        interface TextTransformContext {
+            readonly original: string;
+        }
+
+        interface TextTransformer {
+            transform(fn: (text: string, ctx: TextTransformContext) => string): this;
+        }
 
         type TextStyleFacade = {
             // static
