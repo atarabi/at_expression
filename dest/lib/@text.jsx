@@ -66,49 +66,46 @@
             InlineWhitespace: /[\p{Zs}\t]/u,
             LineBreak: /(?:\r\n|[\n\r\u0085\u2028\u2029])/u,
         };
-        const CHAR_CLASS_REGISTRY = Object.keys(CHAR_CLASS_DEFINITIONS).reduce((acc, key) => {
-            acc[key] = new CharClass(key, CHAR_CLASS_DEFINITIONS[key]);
-            return acc;
-        }, {});
-        for (const cls of Object.values(CHAR_CLASS_REGISTRY)) {
-            Object.freeze(cls);
-        }
-        Object.freeze(CHAR_CLASS_REGISTRY);
+        const CHAR_CLASS_REGISTRY = (() => {
+            const registry = {};
+            for (const [key, re] of Object.entries(CHAR_CLASS_DEFINITIONS)) {
+                registry[key] = Object.freeze(new CharClass(key, re));
+            }
+            return Object.freeze(registry);
+        })();
         function createMatcher(matchers) {
-            if (!matchers) {
+            if (!matchers)
                 return () => false;
-            }
-            let fns = [];
-            const push_fn = (matcher) => {
-                if (typeof matcher === "string") {
-                    const charClass = CHAR_CLASS_REGISTRY[matcher];
-                    if (charClass) {
-                        fns.push(g => g !== null && charClass.test(g));
-                    }
-                    throw new Error(`Unknown CharClass Key: ${matcher}`);
+            const items = Array.isArray(matchers) ? matchers : [matchers];
+            const fns = items.map(m => {
+                if (typeof m === "string") {
+                    const cc = CHAR_CLASS_REGISTRY[m];
+                    if (!cc)
+                        throw new Error(`Unknown CharClass: ${m}`);
+                    return (g) => g !== null && cc.test(g);
                 }
-                else if (CharClass.isCharClass(matcher)) {
-                    fns.push(g => g !== null && matcher.test(g));
-                }
-                else if (matcher instanceof RegExp) {
-                    fns.push(g => g !== null && matcher.test(g));
-                }
-            };
-            if (Array.isArray(matchers)) {
-                matchers.forEach(when => push_fn(when));
-            }
-            else {
-                push_fn(matchers);
-            }
-            if (fns.length === 0) {
+                if (CharClass.isCharClass(m))
+                    return (g) => g !== null && m.test(g);
+                if (m instanceof RegExp)
+                    return (g) => g !== null && m.test(g);
                 return () => false;
+            });
+            return (g) => fns.some(p => p(g));
+        }
+        const graphemeSegmenter = new Intl.Segmenter(undefined, { granularity: "grapheme" });
+        const wordSegmenterCache = new Map();
+        function getWordSegmenter(locale) {
+            if (!wordSegmenterCache.has(locale)) {
+                wordSegmenterCache.set(locale, new Intl.Segmenter(locale, { granularity: "word" }));
             }
-            else if (fns.length === 1) {
-                return fns[0];
+            return wordSegmenterCache.get(locale);
+        }
+        const sentenceSegmenterCache = new Map();
+        function getSentenceSegmenter(locale) {
+            if (!sentenceSegmenterCache.has(locale)) {
+                sentenceSegmenterCache.set(locale, new Intl.Segmenter(locale, { granularity: "sentence" }));
             }
-            else {
-                return g => fns.some(f => f(g));
-            }
+            return sentenceSegmenterCache.get(locale);
         }
         function mergeRanges(ranges) {
             if (ranges.length === 0)
@@ -132,208 +129,84 @@
         function replaceText(style, text) {
             return style.replaceText(text);
         }
-        function applyTextStyleAll(property, style, field, value) {
-            switch (field) {
-                case "direction":
-                    return style.setDirection(value);
-                case "firstLineIndent":
-                    return style.setFirstLineIndent(value);
-                case "isEveryLineComposer":
-                    return style.setEveryLineComposer(value);
-                case "isHangingRoman":
-                    return style.setHangingRoman(value);
-                case "justification":
-                    return style.setJustification(value);
-                case "leadingType":
-                    return style.setLeadingType(value);
-                case "leftMargin":
-                    return style.setLeftMargin(value);
-                case "rightMargin":
-                    return style.setRightMargin(value);
-                case "spaceAfter":
-                    return style.setSpaceAfter(value);
-                case "spaceBefore":
-                    return style.setSpaceBefore(value);
-                case "applyFill":
-                    return style.setApplyFill(value);
-                case "applyStroke":
-                    return style.setApplyStroke(value);
-                case "baselineDirection":
-                    return style.setBaselineDirection(value);
-                case "baselineOption":
-                    return style.setBaselineOption(value);
-                case "baselineShift":
-                    return style.setBaselineShift(value);
-                case "digitSet":
-                    return style.setDigitSet(value);
-                case "fillColor":
-                    return style.setFillColor(value);
-                case "font":
-                    return style.setFont(value);
-                case "fontSize":
-                    return style.setFontSize(value);
-                case "horizontalScaling":
-                    return style.setHorizontalScaling(value);
-                case "isAllCaps":
-                    return style.setAllCaps(value);
-                case "isAutoLeading":
-                    return style.setAutoLeading(value);
-                case "isFauxBold":
-                    return style.setFauxBold(value);
-                case "isFauxItalic":
-                    return style.setFauxItalic(value);
-                case "isLigature":
-                    return style.setLigature(value);
-                case "isSmallCaps":
-                    return style.setSmallCaps(value);
-                case "kerning":
-                    for (let n = 0, numOfCharacters = property.value.length; n < numOfCharacters; n++) {
-                        style = style.setKerning(value, n);
-                    }
-                    return style;
-                case "kerningType":
-                    return style.setKerningType(value);
-                case "leading":
-                    return style.setLeading(value);
-                case "lineJoin":
-                    return style.setLineJoin(value);
-                case "strokeColor":
-                    return style.setStrokeColor(value);
-                case "strokeWidth":
-                    return style.setStrokeWidth(value);
-                case "tracking":
-                    return style.setTracking(value);
-                case "tsume":
-                    return style.setTsume(value);
-                case "verticalScaling":
-                    return style.setVerticalScaling(value);
+        const TEXT_STYLE_METHOD_MAP = {
+            // layout
+            direction: "setDirection",
+            firstLineIndent: "setFirstLineIndent",
+            isEveryLineComposer: "setEveryLineComposer",
+            isHangingRoman: "setHangingRoman",
+            justification: "setJustification",
+            leadingType: "setLeadingType",
+            leftMargin: "setLeftMargin",
+            rightMargin: "setRightMargin",
+            spaceAfter: "setSpaceAfter",
+            spaceBefore: "setSpaceBefore",
+            // style
+            applyFill: "setApplyFill",
+            applyStroke: "setApplyStroke",
+            baselineDirection: "setBaselineDirection",
+            baselineOption: "setBaselineOption",
+            baselineShift: "setBaselineShift",
+            digitSet: "setDigitSet",
+            fillColor: "setFillColor",
+            font: "setFont",
+            fontSize: "setFontSize",
+            horizontalScaling: "setHorizontalScaling",
+            isAllCaps: "setAllCaps",
+            isAutoLeading: "setAutoLeading",
+            isFauxBold: "setFauxBold",
+            isFauxItalic: "setFauxItalic",
+            isLigature: "setLigature",
+            isSmallCaps: "setSmallCaps",
+            kerning: "setKerning", // special
+            kerningType: "setKerningType",
+            leading: "setLeading",
+            lineJoin: "setLineJoin",
+            strokeColor: "setStrokeColor",
+            strokeWidth: "setStrokeWidth",
+            tracking: "setTracking",
+            tsume: "setTsume",
+            verticalScaling: "setVerticalScaling",
+        };
+        function applyTextStyleUniversal(style, field, value, startIndex, count) {
+            const methodName = TEXT_STYLE_METHOD_MAP[field];
+            if (!methodName)
+                throw new Error(`Invalid field: ${field}`);
+            // kerning
+            if (field === "kerning") {
+                const start = startIndex ?? 0;
+                const len = count ?? 1;
+                for (let i = 0; i < len; i++) {
+                    style = style.setKerning(value, start + i);
+                }
+                return style;
             }
-            throw new Error(`Invalid field: ${field}`);
+            // other
+            const fn = style[methodName];
+            if (typeof fn !== "function")
+                throw new Error(`Invalid method: ${methodName}`);
+            if (startIndex !== undefined && count !== undefined) {
+                return fn.call(style, value, startIndex, count);
+            }
+            else {
+                return fn.call(style, value);
+            }
         }
-        function applyStyleField(style, field, value, startIndex, numOfCharacters) {
-            switch (field) {
-                case "applyFill":
-                    return style.setApplyFill(value, startIndex, numOfCharacters);
-                case "applyStroke":
-                    return style.setApplyStroke(value, startIndex, numOfCharacters);
-                case "baselineDirection":
-                    return style.setBaselineDirection(value, startIndex, numOfCharacters);
-                case "baselineOption":
-                    return style.setBaselineOption(value, startIndex, numOfCharacters);
-                case "baselineShift":
-                    return style.setBaselineShift(value, startIndex, numOfCharacters);
-                case "digitSet":
-                    return style.setDigitSet(value, startIndex, numOfCharacters);
-                case "fillColor":
-                    return style.setFillColor(value, startIndex, numOfCharacters);
-                case "font":
-                    return style.setFont(value, startIndex, numOfCharacters);
-                case "fontSize":
-                    return style.setFontSize(value, startIndex, numOfCharacters);
-                case "horizontalScaling":
-                    return style.setHorizontalScaling(value, startIndex, numOfCharacters);
-                case "isAllCaps":
-                    return style.setAllCaps(value, startIndex, numOfCharacters);
-                case "isAutoLeading":
-                    return style.setAutoLeading(value, startIndex, numOfCharacters);
-                case "isFauxBold":
-                    return style.setFauxBold(value, startIndex, numOfCharacters);
-                case "isFauxItalic":
-                    return style.setFauxItalic(value, startIndex, numOfCharacters);
-                case "isLigature":
-                    return style.setLigature(value, startIndex, numOfCharacters);
-                case "isSmallCaps":
-                    return style.setSmallCaps(value, startIndex, numOfCharacters);
-                case "kerning":
-                    for (let n = 0; n < numOfCharacters; n++) {
-                        style = style.setKerning(value, startIndex + n);
-                    }
-                    return style;
-                case "kerningType":
-                    return style.setKerningType(value, startIndex, numOfCharacters);
-                case "leading":
-                    return style.setLeading(value, startIndex, numOfCharacters);
-                case "lineJoin":
-                    return style.setLineJoin(value, startIndex, numOfCharacters);
-                case "strokeColor":
-                    return style.setStrokeColor(value, startIndex, numOfCharacters);
-                case "strokeWidth":
-                    return style.setStrokeWidth(value, startIndex, numOfCharacters);
-                case "tracking":
-                    return style.setTracking(value, startIndex, numOfCharacters);
-                case "tsume":
-                    return style.setTsume(value, startIndex, numOfCharacters);
-                case "verticalScaling":
-                    return style.setVerticalScaling(value, startIndex, numOfCharacters);
+        function applyTextStyleAll(text, style, field, value) {
+            if (field === "kerning") {
+                return applyTextStyleUniversal(style, field, value, 0, text.length);
             }
-            throw new Error(`Invalid field: ${field}`);
+            else {
+                return applyTextStyleUniversal(style, field, value);
+            }
         }
         function applyStyle(style, options, startIndex, numOfCharacters) {
             for (const field in options) {
-                style = applyStyleField(style, field, options[field], startIndex, numOfCharacters);
+                if (Object.prototype.hasOwnProperty.call(options, field)) {
+                    style = applyTextStyleUniversal(style, field, options[field], startIndex, numOfCharacters);
+                }
             }
             return style;
-        }
-        function lowerBound(ranges, from) {
-            let lo = 0;
-            let hi = ranges.length;
-            while (lo < hi) {
-                const mid = (lo + hi) >> 1;
-                const r = ranges[mid];
-                if (r.from + r.count <= from) {
-                    lo = mid + 1;
-                }
-                else {
-                    hi = mid;
-                }
-            }
-            return lo;
-        }
-        function addNormalizedRange(ranges, incoming) {
-            if (incoming.count <= 0)
-                return;
-            const inStart = incoming.from;
-            const inEnd = incoming.from + incoming.count;
-            let i = lowerBound(ranges, inStart);
-            while (i < ranges.length) {
-                const cur = ranges[i];
-                const curStart = cur.from;
-                const curEnd = cur.from + cur.count;
-                if (curStart >= inEnd)
-                    break;
-                const overlapStart = Math.max(curStart, inStart);
-                const overlapEnd = Math.min(curEnd, inEnd);
-                const replaced = [];
-                if (curStart < overlapStart) {
-                    replaced.push({
-                        from: curStart,
-                        count: overlapStart - curStart,
-                        style: cur.style,
-                    });
-                }
-                replaced.push({
-                    from: overlapStart,
-                    count: overlapEnd - overlapStart,
-                    style: { ...cur.style, ...incoming.style },
-                });
-                if (overlapEnd < curEnd) {
-                    replaced.push({
-                        from: overlapEnd,
-                        count: curEnd - overlapEnd,
-                        style: cur.style,
-                    });
-                }
-                ranges.splice(i, 1, ...replaced);
-                i += replaced.length;
-            }
-            if (i === lowerBound(ranges, inStart)) {
-                ranges.splice(i, 0, incoming);
-            }
-        }
-        function addNormalizedRanges(ranges, incoming) {
-            for (const r of incoming) {
-                addNormalizedRange(ranges, r);
-            }
         }
         function shallowEqual(a, b) {
             if (a === b)
@@ -432,11 +305,10 @@
             return result;
         }
         class TextStyleBuilder {
-            apply(property = thisLayer.text.sourceText, style = property.style) {
-                for (const { from, count, style: st } of this.resolve(property.value)) {
-                    style = applyStyle(style, st, from, count);
-                }
-                return style;
+            items = [];
+            rule(rule, style) {
+                this.items.push({ rule, style });
+                return this;
             }
         }
         function toRegExp(m) {
@@ -526,37 +398,29 @@
             return ranges;
         }
         class CharClassTextStyleBuilder extends TextStyleBuilder {
-            rules = [];
-            styles = [];
             options;
             constructor(options) {
                 super();
                 this.options = { mode: "overlap", ...options };
             }
-            rule(rule, style) {
-                this.rules.push(rule);
-                this.styles.push(style);
-                return this;
-            }
             resolve(text) {
                 let result = [];
                 if (this.options.mode === "exclusive") {
-                    const ranges = annotateByCharClassExclusive(text, this.rules);
+                    const ranges = annotateByCharClassExclusive(text, this.items.map(item => item.rule));
                     for (const { from, count, index } of ranges) {
                         if (index < 0) {
                             continue;
                         }
-                        result.push({ from, count, style: this.styles[index] });
+                        result.push({ from, count, style: this.items[index].style });
                     }
                 }
                 else {
-                    for (let i = 0; i < this.rules.length; i++) {
-                        const ranges = annotateByCharClassOverlay(text, this.rules[i]);
+                    for (const { rule, style } of this.items) {
+                        const ranges = annotateByCharClassOverlay(text, rule);
                         for (const { from, count } of ranges) {
-                            result.push({ from, count, style: this.styles[i] });
+                            result.push({ from, count, style });
                         }
                     }
-                    result = normalizeRanges(result);
                 }
                 return result;
             }
@@ -589,22 +453,14 @@
             return mergeRanges(ranges);
         }
         class RegExpTextStyleBuilder extends TextStyleBuilder {
-            rules = [];
-            styles = [];
-            rule(rule, style) {
-                this.rules.push(rule);
-                this.styles.push(style);
-                return this;
-            }
             resolve(text) {
                 let result = [];
-                for (let i = 0; i < this.rules.length; i++) {
-                    const ranges = annotateByRegExp(text, this.rules[i]);
+                for (const { rule, style } of this.items) {
+                    const ranges = annotateByRegExp(text, rule);
                     for (const { from, count } of ranges) {
-                        result.push({ from, count, style: this.styles[i] });
+                        result.push({ from, count, style: style });
                     }
                 }
-                result = normalizeRanges(result);
                 return result;
             }
         }
@@ -616,33 +472,24 @@
             return new RegExp(pattern, flags);
         }
         class SearchTextStyleBuilder extends TextStyleBuilder {
-            rules = [];
-            styles = [];
             options;
             constructor(options) {
                 super();
                 this.options = { caseSensitive: true, ...options };
             }
-            rule(rule, style) {
-                this.rules.push(rule instanceof RegExp ? rule : createSearchRegExp(rule, this.options));
-                this.styles.push(style);
-                return this;
-            }
             resolve(text) {
                 let result = [];
-                for (let i = 0; i < this.rules.length; i++) {
-                    const ranges = annotateByRegExp(text, this.rules[i]);
+                for (const { rule, style } of this.items) {
+                    const ranges = annotateByRegExp(text, createSearchRegExp(rule, this.options));
                     for (const { from, count } of ranges) {
-                        result.push({ from, count, style: this.styles[i] });
+                        result.push({ from, count, style });
                     }
                 }
-                result = normalizeRanges(result);
                 return result;
             }
         }
         function convertGraphemeRangesForText(text, rules, skipWhen, line = 0) {
-            const segmenter = new Intl.Segmenter(undefined, { granularity: "grapheme" });
-            const graphemes = [...segmenter.segment(text)];
+            const graphemes = [...graphemeSegmenter.segment(text)];
             const skip = createMatcher(skipWhen);
             const logicalToPhysical = [];
             const utf16Offsets = [];
@@ -721,27 +568,21 @@
             return result;
         }
         class PositionTextStyleBuilder extends TextStyleBuilder {
-            rules = [];
-            styles = [];
             options;
             constructor(options) {
                 super();
                 this.options = { mode: "absolute", skipWhen: null, ...options };
             }
-            rule(rule, style) {
-                this.rules.push(rule);
-                this.styles.push(style);
-                return this;
-            }
             resolve(text) {
                 let result = [];
-                const rangesList = this.options.mode === "line" ? convertGraphemeRangesByLine(text, this.rules, this.options.skipWhen) : convertGraphemeRangesForText(text, this.rules, this.options.skipWhen);
-                for (let i = 0; i < rangesList.length; i++) {
+                const rules = this.items.map(item => item.rule);
+                const rangesList = this.options.mode === "line" ? convertGraphemeRangesByLine(text, rules, this.options.skipWhen) : convertGraphemeRangesForText(text, rules, this.options.skipWhen);
+                for (let i = 0; i < this.items.length; i++) {
+                    const style = this.items[i].style;
                     for (const { from, count } of rangesList[i]) {
-                        result.push({ from, count, style: this.styles[i] });
+                        result.push({ from, count, style });
                     }
                 }
-                result = normalizeRanges(result);
                 return result;
             }
         }
@@ -788,13 +629,6 @@
             return mergeRanges(result);
         }
         class LineTextStyleBuilder extends TextStyleBuilder {
-            rules = [];
-            styles = [];
-            rule(rule, style) {
-                this.rules.push(rule);
-                this.styles.push(style);
-                return this;
-            }
             resolve(text) {
                 let result = [];
                 const lines = annotateByLine(text);
@@ -804,16 +638,14 @@
                         result.push({ from, count, style });
                     }
                 };
-                for (let i = 0; i < this.rules.length; i++) {
-                    const rule = this.rules[i];
+                for (const { rule, style } of this.items) {
                     if (Array.isArray(rule)) {
-                        rule.forEach(r => interpretRule(r, this.styles[i]));
+                        rule.forEach(r => interpretRule(r, style));
                     }
                     else {
-                        interpretRule(rule, this.styles[i]);
+                        interpretRule(rule, style);
                     }
                 }
-                result = normalizeRanges(result);
                 return result;
             }
         }
@@ -929,33 +761,25 @@
             open;
             close;
             options;
-            rules = [];
-            styles = [];
             constructor(open, close, options) {
                 super();
                 this.open = open;
                 this.close = close;
                 this.options = { defaultTarget: "content", ...options };
             }
-            rule(rule, style) {
-                this.rules.push(rule);
-                this.styles.push(style);
-                return this;
-            }
             resolve(text) {
                 let result = [];
-                const rules = this.rules.map(r => compileSurroundingRule(r, this.options.defaultTarget, this.open.length, this.close.length));
+                const rules = this.items.map(item => item.rule).map(r => compileSurroundingRule(r, this.options.defaultTarget, this.open.length, this.close.length));
                 const surroudnings = annotateBySurrounding(text, this.open, this.close);
-                for (let i = 0; i < rules.length; i++) {
+                for (let i = 0; i < this.items.length; i++) {
                     const rule = rules[i];
-                    const style = this.styles[i];
+                    const style = this.items[i].style;
                     for (const surrounding of surroudnings) {
                         rule(surrounding).forEach(({ from, count }) => {
                             result.push({ from, count, style });
                         });
                     }
                 }
-                result = normalizeRanges(result);
                 return result;
             }
         }
@@ -966,8 +790,7 @@
             Object.assign(ctx, data);
         }
         function segmentTextByGrapheme(text) {
-            const segmenter = new Intl.Segmenter(undefined, { granularity: "grapheme" });
-            const graphemes = [...segmenter.segment(text)];
+            const graphemes = [...graphemeSegmenter.segment(text)];
             const lines = [];
             let lineStart = 0;
             let lineIndex = 0;
@@ -1156,33 +979,22 @@
             return results.map(mergeRanges);
         }
         class GraphemeTextStyleBuilder extends TextStyleBuilder {
-            rules = [];
-            styles = [];
-            rule(rule, style) {
-                if (typeof rule === "function") {
-                    this.rules.push({ match: rule, initState: () => ({}) });
-                }
-                else {
-                    this.rules.push(rule);
-                }
-                this.styles.push(style);
-                return this;
-            }
             resolve(text) {
                 let result = [];
-                const rangesList = processGrapheme(text, this.rules);
-                for (let i = 0; i < this.rules.length; i++) {
+                const rules = this.items.map(item => item.rule).map(rule => typeof rule === "function" ? { match: rule, initState: () => ({}) } : rule);
+                const rangesList = processGrapheme(text, rules);
+                for (let i = 0; i < this.items.length; i++) {
                     const ranges = rangesList[i];
+                    const style = this.items[i].style;
                     for (const { from, count } of ranges) {
-                        result.push({ from, count, style: this.styles[i] });
+                        result.push({ from, count, style });
                     }
                 }
-                result = normalizeRanges(result);
                 return result;
             }
         }
         function segmentTextByWord(text, locale) {
-            const segmenter = new Intl.Segmenter(locale, { granularity: "word" });
+            const segmenter = getWordSegmenter(locale);
             const words = [...segmenter.segment(text)];
             const lines = [];
             let lineStart = 0;
@@ -1226,7 +1038,6 @@
         function processWord(locale, text, rules) {
             const { words, lines } = segmentTextByWord(text, locale);
             const results = rules.map(() => []);
-            const graphemeSegmenter = new Intl.Segmenter(undefined, { granularity: "grapheme" });
             const contexts = rules.map(rule => ({
                 index: 0,
                 line: 0,
@@ -1278,27 +1089,20 @@
         }
         class WordTextStyleBuilder extends TextStyleBuilder {
             locale;
-            rules = [];
-            styles = [];
             constructor(locale) {
                 super();
                 this.locale = locale;
             }
-            rule(rule, style) {
-                this.rules.push(rule);
-                this.styles.push(style);
-                return this;
-            }
             resolve(text) {
                 let result = [];
-                const rangesList = processWord(this.locale, text, this.rules);
-                for (let i = 0; i < this.rules.length; i++) {
+                const rangesList = processWord(this.locale, text, this.items.map(item => item.rule));
+                for (let i = 0; i < this.items.length; i++) {
                     const ranges = rangesList[i];
+                    const style = this.items[i].style;
                     for (const { from, count } of ranges) {
-                        result.push({ from, count, style: this.styles[i] });
+                        result.push({ from, count, style });
                     }
                 }
-                result = normalizeRanges(result);
                 return result;
             }
         }
@@ -1306,7 +1110,7 @@
             return /\r\n|\r|\n/.test(text);
         }
         function segmentTextBySentence(text, locale) {
-            const segmenter = new Intl.Segmenter(locale, { granularity: "sentence" });
+            const segmenter = getSentenceSegmenter(locale);
             const sentences = [...segmenter.segment(text)];
             const lines = [];
             let lineStart = 0;
@@ -1384,39 +1188,26 @@
         }
         class SentenceTextStyleBuilder extends TextStyleBuilder {
             locale;
-            rules = [];
-            styles = [];
             constructor(locale) {
                 super();
                 this.locale = locale;
             }
-            rule(rule, style) {
-                this.rules.push(rule);
-                this.styles.push(style);
-                return this;
-            }
             resolve(text) {
                 let result = [];
-                const rangesList = processSentence(this.locale, text, this.rules);
-                for (let i = 0; i < this.rules.length; i++) {
+                const rangesList = processSentence(this.locale, text, this.items.map(item => item.rule));
+                for (let i = 0; i < this.items.length; i++) {
                     const ranges = rangesList[i];
+                    const style = this.items[i].style;
                     for (const { from, count } of ranges) {
-                        result.push({ from, count, style: this.styles[i] });
+                        result.push({ from, count, style });
                     }
                 }
-                result = normalizeRanges(result);
                 return result;
             }
         }
-        class TextStyleApplier {
-            apply(property = thisLayer.text.sourceText, style = property.style) {
-                for (const { from, count, style: st } of this.resolve(property.value)) {
-                    style = applyStyle(style, st, from, count);
-                }
-                return style;
-            }
+        class TextStyleResolver {
         }
-        class ForEachLine extends TextStyleApplier {
+        class ForEachLine extends TextStyleResolver {
             fn;
             constructor(fn) {
                 super();
@@ -1436,7 +1227,7 @@
                 return result;
             }
         }
-        class ForEachGrapheme extends TextStyleApplier {
+        class ForEachGrapheme extends TextStyleResolver {
             fn;
             options;
             constructor(fn, options) {
@@ -1604,7 +1395,7 @@
                 return result;
             }
         }
-        class ForEachWord extends TextStyleApplier {
+        class ForEachWord extends TextStyleResolver {
             fn;
             options;
             constructor(fn, options) {
@@ -1614,8 +1405,7 @@
             }
             resolve(text) {
                 let result = [];
-                const { words, lines } = segmentTextByWord(text);
-                const graphemeSegmenter = new Intl.Segmenter(undefined, { granularity: "grapheme" });
+                const { words, lines } = segmentTextByWord(text, this.options.locale);
                 const ctx = {
                     index: 0,
                     line: 0,
@@ -1661,11 +1451,10 @@
                         applyRange(result, r, from, count);
                     }
                 });
-                result = normalizeRanges(result);
                 return result;
             }
         }
-        class ForEachSentence extends TextStyleApplier {
+        class ForEachSentence extends TextStyleResolver {
             fn;
             options;
             constructor(fn, options) {
@@ -1675,7 +1464,7 @@
             }
             resolve(text) {
                 let result = [];
-                const { sentences, lines } = segmentTextBySentence(text);
+                const { sentences, lines } = segmentTextBySentence(text, this.options.locale);
                 const ctx = {
                     index: 0,
                     line: 0,
@@ -1716,11 +1505,10 @@
                         applyRange(result, r, from, count);
                     }
                 });
-                result = normalizeRanges(result);
                 return result;
             }
         }
-        class ForEachRegExp extends TextStyleApplier {
+        class ForEachRegExp extends TextStyleResolver {
             re;
             fn;
             constructor(re, fn) {
@@ -1777,11 +1565,10 @@
                     cursor = match.index + advance;
                     refreshMatches();
                 }
-                result = normalizeRanges(result);
                 return result;
             }
         }
-        class ForEachSurrounding extends TextStyleApplier {
+        class ForEachSurrounding extends TextStyleResolver {
             open;
             close;
             fn;
@@ -1801,7 +1588,6 @@
                         applyRange(result, r, from, count);
                     }
                 });
-                result = normalizeRanges(result);
                 return result;
             }
         }
@@ -1816,10 +1602,10 @@
                 this.transforms.push(fn);
                 return this;
             }
-            rule(r, style) {
+            rule(rule, style) {
                 const builder = this.builders[this.builders.length - 1];
                 if (builder instanceof TextStyleBuilder) {
-                    builder.rule(r, style);
+                    builder.rule(rule, style);
                 }
                 return this;
             }
@@ -1892,24 +1678,17 @@
                 }
                 // global
                 for (const field in this.globalStyle) {
-                    style = applyTextStyleAll(property, style, field, this.globalStyle[field]);
+                    style = applyTextStyleAll(text, style, field, this.globalStyle[field]);
                 }
                 // local
-                for (const { from, count, style: st } of this.resolve(text)) {
+                for (const { from, count, style: st } of normalizeRanges(this.resolve(text))) {
                     style = applyStyle(style, st, from, count);
                 }
                 return style;
             }
             resolve(text) {
                 let result = [];
-                for (const builder of this.builders) {
-                    if (result.length) {
-                        addNormalizedRanges(result, builder.resolve(text));
-                    }
-                    else {
-                        result = builder.resolve(text);
-                    }
-                }
+                this.builders.forEach(builder => result.push(...builder.resolve(text)));
                 return result;
             }
         }

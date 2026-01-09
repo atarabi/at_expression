@@ -17,7 +17,7 @@ declare namespace Atarabi {
         interface Lib {
             CharClass: CharClassMap;
             createMatcher: typeof createMatcher;
-            TextStyle(globalStyle?: TextLayoutOptions | TextStyleOptions): TextStyleContext<TextStyleApplier> & TextTransformer;
+            TextStyle(globalStyle?: TextLayoutOptions | TextStyleOptions): TextStyleContext & TextTransformer;
         }
 
         type CharClassKey =
@@ -142,10 +142,13 @@ declare namespace Atarabi {
 
         interface TextStyleApplier {
             apply(property?: TextProperty, style?: TextStyleProperty): TextStyleProperty;
+        }
+
+        interface TextStyleResolver {
             resolve(text: string): RangeWithStyle[];
         }
 
-        interface TextStyleBuilder<Rule> extends TextStyleApplier {
+        interface TextStyleBuilder<Rule> extends TextStyleResolver {
             rule(rule: Rule, style: TextStyleOptions): this;
         }
 
@@ -325,14 +328,14 @@ declare namespace Atarabi {
             bySentence(locale?: string): TextStyleContext<SentenceTextStyleBuilder>;
             // dynamic
             forEachLine(fn: ForEachLineFunc): TextStyleContext<TextStyleApplier>;
-            forEachGrapheme(fn: ForEachGraphemeFunc, options?: ForEachGraphemeOptions): TextStyleContext<TextStyleApplier>;
-            forEachWord(fn: ForEachWordFunc, options?: ForEachWordOptions): TextStyleContext<TextStyleApplier>;
-            forEachSentence(fn: ForEachSentenceFunc, options?: ForEachSentenceOptions): TextStyleContext<TextStyleApplier>;
-            forEachRegExp(re: RegExp | RegExp[], fn: ForEachRegExpFunc): TextStyleContext<TextStyleApplier>;
-            forEachSurrounding(open: string, close: string, fn: ForEachSurroundingFunc): TextStyleContext<TextStyleApplier>;
+            forEachGrapheme(fn: ForEachGraphemeFunc, options?: ForEachGraphemeOptions): TextStyleContext;
+            forEachWord(fn: ForEachWordFunc, options?: ForEachWordOptions): TextStyleContext;
+            forEachSentence(fn: ForEachSentenceFunc, options?: ForEachSentenceOptions): TextStyleContext;
+            forEachRegExp(re: RegExp | RegExp[], fn: ForEachRegExpFunc): TextStyleContext;
+            forEachSurrounding(open: string, close: string, fn: ForEachSurroundingFunc): TextStyleContext;
         };
 
-        type TextStyleContext<Builder> = Builder & TextStyleFacade;
+        type TextStyleContext<Builder extends object = {}> = Builder & TextStyleApplier & TextStyleFacade;
     }
 
 }

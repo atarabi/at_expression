@@ -71,53 +71,49 @@
             LineBreak: /(?:\r\n|[\n\r\u0085\u2028\u2029])/u,
         };
 
-        const CHAR_CLASS_REGISTRY: Record<CharClassKey, CharClass> = Object.keys(CHAR_CLASS_DEFINITIONS).reduce((acc, key) => {
-            acc[key] = new CharClass(key, CHAR_CLASS_DEFINITIONS[key]);
-            return acc;
-        }, {} as any);
-
-        for (const cls of Object.values(CHAR_CLASS_REGISTRY)) {
-            Object.freeze(cls);
-        }
-        Object.freeze(CHAR_CLASS_REGISTRY);
+        const CHAR_CLASS_REGISTRY: Record<CharClassKey, CharClass> = (() => {
+            const registry: any = {};
+            for (const [key, re] of Object.entries(CHAR_CLASS_DEFINITIONS)) {
+                registry[key] = Object.freeze(new CharClass(key, re));
+            }
+            return Object.freeze(registry) as Record<CharClassKey, CharClass>;
+        })();
 
         type CharMatcher = Atarabi.text.CharMatcher;
         type CharMatchers = Atarabi.text.CharMatchers;
 
         function createMatcher(matchers?: CharMatchers): (g: string) => boolean {
-            if (!matchers) {
-                return () => false;
-            }
+            if (!matchers) return () => false;
 
-            let fns: ((g: string) => boolean)[] = [];
-
-            const push_fn = (matcher: CharMatcher) => {
-                if (typeof matcher === "string") {
-                    const charClass = CHAR_CLASS_REGISTRY[matcher];
-                    if (charClass) {
-                        fns.push(g => g !== null && charClass.test(g));
-                    }
-                    throw new Error(`Unknown CharClass Key: ${matcher}`);
-                } else if (CharClass.isCharClass(matcher)) {
-                    fns.push(g => g !== null && matcher.test(g));
-                } else if (matcher instanceof RegExp) {
-                    fns.push(g => g !== null && matcher.test(g));
+            const items = Array.isArray(matchers) ? matchers : [matchers];
+            const fns = items.map(m => {
+                if (typeof m === "string") {
+                    const cc = CHAR_CLASS_REGISTRY[m];
+                    if (!cc) throw new Error(`Unknown CharClass: ${m}`);
+                    return (g: string) => g !== null && cc.test(g);
                 }
-            };
-
-            if (Array.isArray(matchers)) {
-                matchers.forEach(when => push_fn(when));
-            } else {
-                push_fn(matchers);
-            }
-
-            if (fns.length === 0) {
+                if (CharClass.isCharClass(m)) return (g: string) => g !== null && m.test(g);
+                if (m instanceof RegExp) return (g: string) => g !== null && m.test(g);
                 return () => false;
-            } else if (fns.length === 1) {
-                return fns[0];
-            } else {
-                return g => fns.some(f => f(g));
+            });
+
+            return (g: string) => fns.some(p => p(g));
+        }
+
+        const graphemeSegmenter = new Intl.Segmenter(undefined, { granularity: "grapheme" });
+        const wordSegmenterCache = new Map<string, Intl.Segmenter>();
+        function getWordSegmenter(locale: string): Intl.Segmenter {
+            if (!wordSegmenterCache.has(locale)) {
+                wordSegmenterCache.set(locale, new Intl.Segmenter(locale, { granularity: "word" }));
             }
+            return wordSegmenterCache.get(locale)!;
+        }
+        const sentenceSegmenterCache = new Map<string, Intl.Segmenter>();
+        function getSentenceSegmenter(locale: string): Intl.Segmenter {
+            if (!sentenceSegmenterCache.has(locale)) {
+                sentenceSegmenterCache.set(locale, new Intl.Segmenter(locale, { granularity: "sentence" }));
+            }
+            return sentenceSegmenterCache.get(locale)!;
         }
 
         type Range = Atarabi.text.Range;
@@ -156,221 +152,90 @@
             return style.replaceText(text);
         }
 
-        function applyTextStyleAll<FieldL extends keyof TextLayout, FieldS extends keyof TextStyle>(property: TextProperty, style: TextStyleProperty, field: FieldL | FieldS, value: TextLayout[FieldL] | TextStyle[FieldS]): TextStyleProperty {
-            switch (field) {
-                case "direction":
-                    return style.setDirection(value as any);
-                case "firstLineIndent":
-                    return style.setFirstLineIndent(value as any);
-                case "isEveryLineComposer":
-                    return style.setEveryLineComposer(value as any);
-                case "isHangingRoman":
-                    return style.setHangingRoman(value as any);
-                case "justification":
-                    return style.setJustification(value as any);
-                case "leadingType":
-                    return style.setLeadingType(value as any);
-                case "leftMargin":
-                    return style.setLeftMargin(value as any);
-                case "rightMargin":
-                    return style.setRightMargin(value as any);
-                case "spaceAfter":
-                    return style.setSpaceAfter(value as any);
-                case "spaceBefore":
-                    return style.setSpaceBefore(value as any);
-                case "applyFill":
-                    return style.setApplyFill(value as any);
-                case "applyStroke":
-                    return style.setApplyStroke(value as any);
-                case "baselineDirection":
-                    return style.setBaselineDirection(value as any);
-                case "baselineOption":
-                    return style.setBaselineOption(value as any);
-                case "baselineShift":
-                    return style.setBaselineShift(value as any);
-                case "digitSet":
-                    return style.setDigitSet(value as any);
-                case "fillColor":
-                    return style.setFillColor(value as any);
-                case "font":
-                    return style.setFont(value as any);
-                case "fontSize":
-                    return style.setFontSize(value as any);
-                case "horizontalScaling":
-                    return style.setHorizontalScaling(value as any);
-                case "isAllCaps":
-                    return style.setAllCaps(value as any);
-                case "isAutoLeading":
-                    return style.setAutoLeading(value as any);
-                case "isFauxBold":
-                    return style.setFauxBold(value as any);
-                case "isFauxItalic":
-                    return style.setFauxItalic(value as any);
-                case "isLigature":
-                    return style.setLigature(value as any);
-                case "isSmallCaps":
-                    return style.setSmallCaps(value as any);
-                case "kerning":
-                    for (let n = 0, numOfCharacters = property.value.length; n < numOfCharacters; n++) {
-                        style = style.setKerning(value as any, n);
-                    }
-                    return style;
-                case "kerningType":
-                    return style.setKerningType(value as any);
-                case "leading":
-                    return style.setLeading(value as any);
-                case "lineJoin":
-                    return style.setLineJoin(value as any);
-                case "strokeColor":
-                    return style.setStrokeColor(value as any);
-                case "strokeWidth":
-                    return style.setStrokeWidth(value as any);
-                case "tracking":
-                    return style.setTracking(value as any);
-                case "tsume":
-                    return style.setTsume(value as any);
-                case "verticalScaling":
-                    return style.setVerticalScaling(value as any);
+        type Methods<T> = {
+            [K in keyof T as T[K] extends (...args: any[]) => any ? K : never]: T[K]
+        };
+
+        const TEXT_STYLE_METHOD_MAP: Record<keyof TextLayout | keyof TextStyle, keyof Methods<TextStyleProperty>> = {
+            // layout
+            direction: "setDirection",
+            firstLineIndent: "setFirstLineIndent",
+            isEveryLineComposer: "setEveryLineComposer",
+            isHangingRoman: "setHangingRoman",
+            justification: "setJustification",
+            leadingType: "setLeadingType",
+            leftMargin: "setLeftMargin",
+            rightMargin: "setRightMargin",
+            spaceAfter: "setSpaceAfter",
+            spaceBefore: "setSpaceBefore",
+            // style
+            applyFill: "setApplyFill",
+            applyStroke: "setApplyStroke",
+            baselineDirection: "setBaselineDirection",
+            baselineOption: "setBaselineOption",
+            baselineShift: "setBaselineShift",
+            digitSet: "setDigitSet",
+            fillColor: "setFillColor",
+            font: "setFont",
+            fontSize: "setFontSize",
+            horizontalScaling: "setHorizontalScaling",
+            isAllCaps: "setAllCaps",
+            isAutoLeading: "setAutoLeading",
+            isFauxBold: "setFauxBold",
+            isFauxItalic: "setFauxItalic",
+            isLigature: "setLigature",
+            isSmallCaps: "setSmallCaps",
+            kerning: "setKerning", // special
+            kerningType: "setKerningType",
+            leading: "setLeading",
+            lineJoin: "setLineJoin",
+            strokeColor: "setStrokeColor",
+            strokeWidth: "setStrokeWidth",
+            tracking: "setTracking",
+            tsume: "setTsume",
+            verticalScaling: "setVerticalScaling",
+        };
+
+        function applyTextStyleUniversal(style: TextStyleProperty, field: string, value: any, startIndex?: number, count?: number): TextStyleProperty {
+            const methodName = TEXT_STYLE_METHOD_MAP[field];
+            if (!methodName) throw new Error(`Invalid field: ${field}`);
+
+            // kerning
+            if (field === "kerning") {
+                const start = startIndex ?? 0;
+                const len = count ?? 1;
+                for (let i = 0; i < len; i++) {
+                    style = style.setKerning(value, start + i);
+                }
+                return style;
             }
-            throw new Error(`Invalid field: ${field}`);
+
+            // other
+            const fn = (style as any)[methodName];
+            if (typeof fn !== "function") throw new Error(`Invalid method: ${methodName}`);
+
+            if (startIndex !== undefined && count !== undefined) {
+                return fn.call(style, value, startIndex, count);
+            } else {
+                return fn.call(style, value);
+            }
         }
 
-        function applyStyleField<Field extends keyof TextStyle>(style: TextStyleProperty, field: Field, value: TextStyle[Field], startIndex: number, numOfCharacters: number): TextStyleProperty {
-            switch (field) {
-                case "applyFill":
-                    return style.setApplyFill(value as any, startIndex, numOfCharacters);
-                case "applyStroke":
-                    return style.setApplyStroke(value as any, startIndex, numOfCharacters);
-                case "baselineDirection":
-                    return style.setBaselineDirection(value as any, startIndex, numOfCharacters);
-                case "baselineOption":
-                    return style.setBaselineOption(value as any, startIndex, numOfCharacters);
-                case "baselineShift":
-                    return style.setBaselineShift(value as any, startIndex, numOfCharacters);
-                case "digitSet":
-                    return style.setDigitSet(value as any, startIndex, numOfCharacters);
-                case "fillColor":
-                    return style.setFillColor(value as any, startIndex, numOfCharacters);
-                case "font":
-                    return style.setFont(value as any, startIndex, numOfCharacters);
-                case "fontSize":
-                    return style.setFontSize(value as any, startIndex, numOfCharacters);
-                case "horizontalScaling":
-                    return style.setHorizontalScaling(value as any, startIndex, numOfCharacters);
-                case "isAllCaps":
-                    return style.setAllCaps(value as any, startIndex, numOfCharacters);
-                case "isAutoLeading":
-                    return style.setAutoLeading(value as any, startIndex, numOfCharacters);
-                case "isFauxBold":
-                    return style.setFauxBold(value as any, startIndex, numOfCharacters);
-                case "isFauxItalic":
-                    return style.setFauxItalic(value as any, startIndex, numOfCharacters);
-                case "isLigature":
-                    return style.setLigature(value as any, startIndex, numOfCharacters);
-                case "isSmallCaps":
-                    return style.setSmallCaps(value as any, startIndex, numOfCharacters);
-                case "kerning":
-                    for (let n = 0; n < numOfCharacters; n++) {
-                        style = style.setKerning(value as any, startIndex + n);
-                    }
-                    return style;
-                case "kerningType":
-                    return style.setKerningType(value as any, startIndex, numOfCharacters);
-                case "leading":
-                    return style.setLeading(value as any, startIndex, numOfCharacters);
-                case "lineJoin":
-                    return style.setLineJoin(value as any, startIndex, numOfCharacters);
-                case "strokeColor":
-                    return style.setStrokeColor(value as any, startIndex, numOfCharacters);
-                case "strokeWidth":
-                    return style.setStrokeWidth(value as any, startIndex, numOfCharacters);
-                case "tracking":
-                    return style.setTracking(value as any, startIndex, numOfCharacters);
-                case "tsume":
-                    return style.setTsume(value as any, startIndex, numOfCharacters);
-                case "verticalScaling":
-                    return style.setVerticalScaling(value as any, startIndex, numOfCharacters);
+        function applyTextStyleAll<FieldL extends keyof TextLayout, FieldS extends keyof TextStyle>(text: string, style: TextStyleProperty, field: FieldL | FieldS, value: TextLayout[FieldL] | TextStyle[FieldS]): TextStyleProperty {
+            if (field === "kerning") {
+                return applyTextStyleUniversal(style, field, value, 0, text.length);
+            } else {
+                return applyTextStyleUniversal(style, field, value);
             }
-            throw new Error(`Invalid field: ${field}`);
         }
 
         function applyStyle(style: TextStyleProperty, options: TextStyleOptions, startIndex: number, numOfCharacters: number): TextStyleProperty {
             for (const field in options) {
-                style = applyStyleField(style, field as keyof TextStyle, options[field], startIndex, numOfCharacters);
+                if (Object.prototype.hasOwnProperty.call(options, field)) {
+                    style = applyTextStyleUniversal(style, field, options[field], startIndex, numOfCharacters);
+                }
             }
             return style;
-        }
-
-        function lowerBound(ranges: RangeWithStyle[], from: number): number {
-            let lo = 0;
-            let hi = ranges.length;
-            while (lo < hi) {
-                const mid = (lo + hi) >> 1;
-                const r = ranges[mid];
-                if (r.from + r.count <= from) {
-                    lo = mid + 1;
-                } else {
-                    hi = mid;
-                }
-            }
-            return lo;
-        }
-
-        function addNormalizedRange(ranges: RangeWithStyle[], incoming: RangeWithStyle): void {
-            if (incoming.count <= 0) return;
-
-            const inStart = incoming.from;
-            const inEnd = incoming.from + incoming.count;
-
-            let i = lowerBound(ranges, inStart);
-
-            while (i < ranges.length) {
-                const cur = ranges[i];
-                const curStart = cur.from;
-                const curEnd = cur.from + cur.count;
-
-                if (curStart >= inEnd) break;
-
-                const overlapStart = Math.max(curStart, inStart);
-                const overlapEnd = Math.min(curEnd, inEnd);
-
-                const replaced: RangeWithStyle[] = [];
-
-                if (curStart < overlapStart) {
-                    replaced.push({
-                        from: curStart,
-                        count: overlapStart - curStart,
-                        style: cur.style,
-                    });
-                }
-
-                replaced.push({
-                    from: overlapStart,
-                    count: overlapEnd - overlapStart,
-                    style: { ...cur.style, ...incoming.style },
-                });
-
-                if (overlapEnd < curEnd) {
-                    replaced.push({
-                        from: overlapEnd,
-                        count: curEnd - overlapEnd,
-                        style: cur.style,
-                    });
-                }
-
-                ranges.splice(i, 1, ...replaced);
-                i += replaced.length;
-            }
-
-            if (i === lowerBound(ranges, inStart)) {
-                ranges.splice(i, 0, incoming);
-            }
-        }
-
-        function addNormalizedRanges(ranges: RangeWithStyle[], incoming: RangeWithStyle[]): void {
-            for (const r of incoming) {
-                addNormalizedRange(ranges, r);
-            }
         }
 
         function shallowEqual(a: any, b: any): boolean {
@@ -491,12 +356,10 @@
         }
 
         abstract class TextStyleBuilder<Rule> implements Atarabi.text.TextStyleBuilder<Rule> {
-            abstract rule(a: Rule | TextStyleOptions, b?: TextStyleOptions): this
-            apply(property: TextProperty = thisLayer.text.sourceText, style: TextStyleProperty = property.style): TextStyleProperty {
-                for (const { from, count, style: st } of this.resolve(property.value)) {
-                    style = applyStyle(style, st, from, count);
-                }
-                return style;
+            protected items: { rule: Rule; style: TextStyleOptions }[] = [];
+            rule(rule: Rule, style: TextStyleOptions): this {
+                this.items.push({ rule, style });
+                return this;
             }
             abstract resolve(text: string): RangeWithStyle[];
         }
@@ -601,36 +464,28 @@
         }
 
         class CharClassTextStyleBuilder extends TextStyleBuilder<CharClassRule> implements Atarabi.text.CharClassTextStyleBuilder {
-            protected rules: CharClassRule[] = [];
-            protected styles: TextStyleOptions[] = [];
             protected options: CharClassOptions;
             constructor(options?: CharClassOptions) {
                 super();
                 this.options = { mode: "overlap", ...options };
             }
-            rule(rule: CharClassRule, style: TextStyleOptions): this {
-                this.rules.push(rule);
-                this.styles.push(style);
-                return this;
-            }
             resolve(text: string): RangeWithStyle[] {
                 let result: RangeWithStyle[] = [];
                 if (this.options.mode === "exclusive") {
-                    const ranges = annotateByCharClassExclusive(text, this.rules);
+                    const ranges = annotateByCharClassExclusive(text, this.items.map(item => item.rule));
                     for (const { from, count, index } of ranges) {
                         if (index < 0) {
                             continue;
                         }
-                        result.push({ from, count, style: this.styles[index] });
+                        result.push({ from, count, style: this.items[index].style });
                     }
                 } else {
-                    for (let i = 0; i < this.rules.length; i++) {
-                        const ranges = annotateByCharClassOverlay(text, this.rules[i]);
+                    for (const { rule, style } of this.items) {
+                        const ranges = annotateByCharClassOverlay(text, rule);
                         for (const { from, count } of ranges) {
-                            result.push({ from, count, style: this.styles[i] });
+                            result.push({ from, count, style });
                         }
                     }
-                    result = normalizeRanges(result);
                 }
                 return result;
             }
@@ -669,22 +524,14 @@
         type RegExpRule = Atarabi.text.RegExpRule;
 
         class RegExpTextStyleBuilder extends TextStyleBuilder<RegExpRule> implements Atarabi.text.RegExpTextStyleBuilder {
-            protected rules: RegExpRule[] = [];
-            protected styles: TextStyleOptions[] = [];
-            rule(rule: RegExpRule, style: TextStyleOptions): this {
-                this.rules.push(rule);
-                this.styles.push(style);
-                return this;
-            }
             resolve(text: string): RangeWithStyle[] {
                 let result: RangeWithStyle[] = [];
-                for (let i = 0; i < this.rules.length; i++) {
-                    const ranges = annotateByRegExp(text, this.rules[i]);
+                for (const { rule, style } of this.items) {
+                    const ranges = annotateByRegExp(text, rule);
                     for (const { from, count } of ranges) {
-                        result.push({ from, count, style: this.styles[i] });
+                        result.push({ from, count, style: style });
                     }
                 }
-                result = normalizeRanges(result);
                 return result;
             }
         }
@@ -701,27 +548,19 @@
         }
 
         class SearchTextStyleBuilder extends TextStyleBuilder<SearchRule> implements Atarabi.text.SearchTextStyleBuilder {
-            protected rules: RegExpRule[] = [];
-            protected styles: TextStyleOptions[] = [];
             protected options: SearchOptions;
             constructor(options?: SearchOptions) {
                 super();
                 this.options = { caseSensitive: true, ...options };
             }
-            rule(rule: SearchRule, style: TextStyleOptions): this {
-                this.rules.push(rule instanceof RegExp ? rule : createSearchRegExp(rule, this.options));
-                this.styles.push(style);
-                return this;
-            }
             resolve(text: string): RangeWithStyle[] {
                 let result: RangeWithStyle[] = [];
-                for (let i = 0; i < this.rules.length; i++) {
-                    const ranges = annotateByRegExp(text, this.rules[i]);
+                for (const { rule, style } of this.items) {
+                    const ranges = annotateByRegExp(text, createSearchRegExp(rule, this.options));
                     for (const { from, count } of ranges) {
-                        result.push({ from, count, style: this.styles[i] });
+                        result.push({ from, count, style });
                     }
                 }
-                result = normalizeRanges(result);
                 return result;
             }
         }
@@ -732,8 +571,7 @@
         type SkipWhen = Atarabi.text.SkipWhen;
 
         function convertGraphemeRangesForText(text: string, rules: PositionRule[], skipWhen: SkipWhen, line: number = 0): Range[][] {
-            const segmenter = new Intl.Segmenter(undefined, { granularity: "grapheme" });
-            const graphemes = [...segmenter.segment(text)];
+            const graphemes = [...graphemeSegmenter.segment(text)];
             const skip = createMatcher(skipWhen);
             const logicalToPhysical: number[] = [];
             const utf16Offsets: number[] = [];
@@ -819,27 +657,21 @@
         }
 
         class PositionTextStyleBuilder extends TextStyleBuilder<PositionRule> implements Atarabi.text.PositionTextStyleBuilder {
-            protected rules: PositionRule[] = [];
-            protected styles: TextStyleOptions[] = [];
             protected options: PositionOptions;
             constructor(options?: PositionOptions) {
                 super();
                 this.options = { mode: "absolute", skipWhen: null, ...options };
             }
-            rule(rule: PositionRule, style: TextStyleOptions): this {
-                this.rules.push(rule);
-                this.styles.push(style);
-                return this;
-            }
             resolve(text: string): RangeWithStyle[] {
                 let result: RangeWithStyle[] = [];
-                const rangesList = this.options.mode === "line" ? convertGraphemeRangesByLine(text, this.rules, this.options.skipWhen) : convertGraphemeRangesForText(text, this.rules, this.options.skipWhen);
-                for (let i = 0; i < rangesList.length; i++) {
+                const rules = this.items.map(item => item.rule);
+                const rangesList = this.options.mode === "line" ? convertGraphemeRangesByLine(text, rules, this.options.skipWhen) : convertGraphemeRangesForText(text, rules, this.options.skipWhen);
+                for (let i = 0; i < this.items.length; i++) {
+                    const style = this.items[i].style;
                     for (const { from, count } of rangesList[i]) {
-                        result.push({ from, count, style: this.styles[i] });
+                        result.push({ from, count, style });
                     }
                 }
-                result = normalizeRanges(result);
                 return result;
             }
         }
@@ -894,13 +726,6 @@
         }
 
         class LineTextStyleBuilder extends TextStyleBuilder<LineRule> implements Atarabi.text.LineTextStyleBuilder {
-            protected rules: LineRule[] = [];
-            protected styles: TextStyleOptions[] = [];
-            rule(rule: LineRule, style: TextStyleOptions): this {
-                this.rules.push(rule);
-                this.styles.push(style);
-                return this;
-            }
             resolve(text: string): RangeWithStyle[] {
                 let result: RangeWithStyle[] = [];
                 const lines = annotateByLine(text);
@@ -910,15 +735,13 @@
                         result.push({ from, count, style });
                     }
                 };
-                for (let i = 0; i < this.rules.length; i++) {
-                    const rule = this.rules[i];
+                for (const { rule, style } of this.items) {
                     if (Array.isArray(rule)) {
-                        rule.forEach(r => interpretRule(r, this.styles[i]));
+                        rule.forEach(r => interpretRule(r, style));
                     } else {
-                        interpretRule(rule, this.styles[i]);
+                        interpretRule(rule, style);
                     }
                 }
-                result = normalizeRanges(result);
                 return result;
             }
         }
@@ -1071,31 +894,23 @@
 
         class SurroundingTextStyleBuilder extends TextStyleBuilder<SurroundingRule> implements Atarabi.text.SurroundingTextStyleBuilder {
             protected options: SurroundingOptions;
-            protected rules: SurroundingRule[] = [];
-            protected styles: TextStyleOptions[] = [];
             constructor(protected open: string, protected close: string, options?: SurroundingOptions) {
                 super();
                 this.options = { defaultTarget: "content", ...options };
             }
-            rule(rule: SurroundingRule, style: TextStyleOptions): this {
-                this.rules.push(rule);
-                this.styles.push(style);
-                return this;
-            }
             resolve(text: string): RangeWithStyle[] {
                 let result: RangeWithStyle[] = [];
-                const rules = this.rules.map(r => compileSurroundingRule(r, this.options.defaultTarget, this.open.length, this.close.length));
+                const rules = this.items.map(item => item.rule).map(r => compileSurroundingRule(r, this.options.defaultTarget, this.open.length, this.close.length));
                 const surroudnings = annotateBySurrounding(text, this.open, this.close);
-                for (let i = 0; i < rules.length; i++) {
+                for (let i = 0; i < this.items.length; i++) {
                     const rule = rules[i];
-                    const style = this.styles[i];
+                    const style = this.items[i].style;
                     for (const surrounding of surroudnings) {
                         rule(surrounding).forEach(({ from, count }) => {
                             result.push({ from, count, style })
                         });
                     }
                 }
-                result = normalizeRanges(result);
                 return result;
             }
         }
@@ -1124,8 +939,7 @@
         }
 
         function segmentTextByGrapheme(text: string): { graphemes: Intl.SegmentData[]; lines: LineInfo[]; } {
-            const segmenter = new Intl.Segmenter(undefined, { granularity: "grapheme" });
-            const graphemes = [...segmenter.segment(text)];
+            const graphemes = [...graphemeSegmenter.segment(text)];
 
             const lines: LineInfo[] = [];
 
@@ -1316,27 +1130,17 @@
         }
 
         class GraphemeTextStyleBuilder extends TextStyleBuilder<GraphemeRule> implements Atarabi.text.GraphemeTextStyleBuilder {
-            protected rules: GraphemeRuleItem[] = [];
-            protected styles: TextStyleOptions[] = [];
-            rule(rule: GraphemeRule, style: TextStyleOptions): this {
-                if (typeof rule === "function") {
-                    this.rules.push({ match: rule, initState: () => ({}) });
-                } else {
-                    this.rules.push(rule);
-                }
-                this.styles.push(style);
-                return this;
-            }
             resolve(text: string): RangeWithStyle[] {
                 let result: RangeWithStyle[] = [];
-                const rangesList = processGrapheme(text, this.rules);
-                for (let i = 0; i < this.rules.length; i++) {
+                const rules: GraphemeRuleItem[] = this.items.map(item => item.rule).map(rule => typeof rule === "function" ? { match: rule, initState: () => ({}) } : rule);
+                const rangesList = processGrapheme(text, rules);
+                for (let i = 0; i < this.items.length; i++) {
                     const ranges = rangesList[i];
+                    const style = this.items[i].style;
                     for (const { from, count } of ranges) {
-                        result.push({ from, count, style: this.styles[i] });
+                        result.push({ from, count, style });
                     }
                 }
-                result = normalizeRanges(result);
                 return result;
             }
         }
@@ -1344,8 +1148,8 @@
         type WordRule = Atarabi.text.WordRule;
         type WordContext = Atarabi.text.WordContext;
 
-        function segmentTextByWord(text: string, locale?: string | string[]): { words: Intl.SegmentData[]; lines: LineInfo[]; } {
-            const segmenter = new Intl.Segmenter(locale, { granularity: "word" });
+        function segmentTextByWord(text: string, locale: string): { words: Intl.SegmentData[]; lines: LineInfo[]; } {
+            const segmenter = getWordSegmenter(locale);
             const words = [...segmenter.segment(text)];
 
             const lines: LineInfo[] = [];
@@ -1398,7 +1202,6 @@
             const { words, lines } = segmentTextByWord(text, locale);
 
             const results: Range[][] = rules.map(() => []);
-            const graphemeSegmenter = new Intl.Segmenter(undefined, { granularity: "grapheme" });
 
             const contexts: Mutable<WordContext>[] = rules.map(rule => ({
                 index: 0,
@@ -1455,26 +1258,19 @@
         }
 
         class WordTextStyleBuilder extends TextStyleBuilder<WordRule> implements Atarabi.text.WordTextStyleBuilder {
-            protected rules: WordRule[] = [];
-            protected styles: TextStyleOptions[] = [];
             constructor(private locale: string) {
                 super();
             }
-            rule(rule: WordRule, style: TextStyleOptions): this {
-                this.rules.push(rule);
-                this.styles.push(style);
-                return this;
-            }
             resolve(text: string): RangeWithStyle[] {
                 let result: RangeWithStyle[] = [];
-                const rangesList = processWord(this.locale, text, this.rules);
-                for (let i = 0; i < this.rules.length; i++) {
+                const rangesList = processWord(this.locale, text, this.items.map(item => item.rule));
+                for (let i = 0; i < this.items.length; i++) {
                     const ranges = rangesList[i];
+                    const style = this.items[i].style;
                     for (const { from, count } of ranges) {
-                        result.push({ from, count, style: this.styles[i] });
+                        result.push({ from, count, style });
                     }
                 }
-                result = normalizeRanges(result);
                 return result;
             }
         }
@@ -1486,8 +1282,8 @@
             return /\r\n|\r|\n/.test(text);
         }
 
-        function segmentTextBySentence(text: string, locale?: string | string[]): { sentences: Intl.SegmentData[]; lines: LineInfo[] } {
-            const segmenter = new Intl.Segmenter(locale, { granularity: "sentence" });
+        function segmentTextBySentence(text: string, locale: string): { sentences: Intl.SegmentData[]; lines: LineInfo[] } {
+            const segmenter = getSentenceSegmenter(locale);
             const sentences = [...segmenter.segment(text)];
 
             const lines: LineInfo[] = [];
@@ -1576,43 +1372,30 @@
         }
 
         class SentenceTextStyleBuilder extends TextStyleBuilder<SentenceRule> implements Atarabi.text.SentenceTextStyleBuilder {
-            protected rules: SentenceRule[] = [];
-            protected styles: TextStyleOptions[] = [];
             constructor(private locale: string) {
                 super();
             }
-            rule(rule: SentenceRule, style: TextStyleOptions): this {
-                this.rules.push(rule);
-                this.styles.push(style);
-                return this;
-            }
             resolve(text: string): RangeWithStyle[] {
                 let result: RangeWithStyle[] = [];
-                const rangesList = processSentence(this.locale, text, this.rules);
-                for (let i = 0; i < this.rules.length; i++) {
+                const rangesList = processSentence(this.locale, text, this.items.map(item => item.rule));
+                for (let i = 0; i < this.items.length; i++) {
                     const ranges = rangesList[i];
+                    const style = this.items[i].style;
                     for (const { from, count } of ranges) {
-                        result.push({ from, count, style: this.styles[i] });
+                        result.push({ from, count, style });
                     }
                 }
-                result = normalizeRanges(result);
                 return result;
             }
         }
 
-        abstract class TextStyleApplier implements Atarabi.text.TextStyleApplier {
-            apply(property: TextProperty = thisLayer.text.sourceText, style: TextStyleProperty = property.style): TextStyleProperty {
-                for (const { from, count, style: st } of this.resolve(property.value)) {
-                    style = applyStyle(style, st, from, count);
-                }
-                return style;
-            }
+        abstract class TextStyleResolver implements Atarabi.text.TextStyleResolver {
             abstract resolve(text: string): RangeWithStyle[];
         }
 
         type ForEachLineFunc = Atarabi.text.ForEachLineFunc;
 
-        class ForEachLine extends TextStyleApplier implements Atarabi.text.TextStyleApplier {
+        class ForEachLine extends TextStyleResolver {
             constructor(public fn: ForEachLineFunc) {
                 super();
             }
@@ -1634,7 +1417,7 @@
         type ForEachGraphemeFunc = Atarabi.text.ForEachGraphemeFunc;
         type ForEachGraphemeOptions = Atarabi.text.ForEachGraphemeOptions;
 
-        class ForEachGrapheme extends TextStyleApplier implements Atarabi.text.TextStyleApplier {
+        class ForEachGrapheme extends TextStyleResolver {
             protected options: ForEachGraphemeOptions;
             constructor(public fn: ForEachGraphemeFunc, options?: ForEachGraphemeOptions) {
                 super();
@@ -1796,7 +1579,7 @@
         type ForEachWordFunc = Atarabi.text.ForEachWordFunc;
         type ForEachWordOptions = Atarabi.text.ForEachWordOptions;
 
-        class ForEachWord extends TextStyleApplier implements Atarabi.text.TextStyleApplier {
+        class ForEachWord extends TextStyleResolver {
             protected options: ForEachWordOptions;
             constructor(public fn: ForEachWordFunc, options?: ForEachWordOptions) {
                 super();
@@ -1804,8 +1587,7 @@
             }
             resolve(text: string): RangeWithStyle[] {
                 let result: RangeWithStyle[] = [];
-                const { words, lines } = segmentTextByWord(text);
-                const graphemeSegmenter = new Intl.Segmenter(undefined, { granularity: "grapheme" });
+                const { words, lines } = segmentTextByWord(text, this.options.locale);
                 const ctx: Mutable<WordContext> = {
                     index: 0,
                     line: 0,
@@ -1853,8 +1635,6 @@
                     }
                 });
 
-                result = normalizeRanges(result);
-
                 return result;
             }
         }
@@ -1862,7 +1642,7 @@
         type ForEachSentenceFunc = Atarabi.text.ForEachSentenceFunc;
         type ForEachSentenceOptions = Atarabi.text.ForEachSentenceOptions;
 
-        class ForEachSentence extends TextStyleApplier implements Atarabi.text.TextStyleApplier {
+        class ForEachSentence extends TextStyleResolver {
             protected options: ForEachSentenceOptions;
             constructor(public fn: ForEachSentenceFunc, options?: ForEachSentenceOptions) {
                 super();
@@ -1870,7 +1650,7 @@
             }
             resolve(text: string): RangeWithStyle[] {
                 let result: RangeWithStyle[] = [];
-                const { sentences, lines } = segmentTextBySentence(text);
+                const { sentences, lines } = segmentTextBySentence(text, this.options.locale);
                 const ctx: Mutable<SentenceContext> = {
                     index: 0,
                     line: 0,
@@ -1913,15 +1693,13 @@
                     }
                 });
 
-                result = normalizeRanges(result);
-
                 return result;
             }
         }
 
         type ForEachRegExpFunc = Atarabi.text.ForEachRegExpFunc;
 
-        class ForEachRegExp extends TextStyleApplier implements Atarabi.text.TextStyleApplier {
+        class ForEachRegExp extends TextStyleResolver {
             constructor(public re: RegExp | RegExp[], public fn: ForEachRegExpFunc) {
                 super();
             }
@@ -1986,15 +1764,13 @@
                     refreshMatches();
                 }
 
-                result = normalizeRanges(result);
-
                 return result;
             }
         }
 
         type ForEachSurroundingFunc = Atarabi.text.ForEachSurroundingFunc;
 
-        class ForEachSurrounding extends TextStyleApplier implements Atarabi.text.TextStyleApplier {
+        class ForEachSurrounding extends TextStyleResolver {
             constructor(public open: string, public close: string, public fn: ForEachSurroundingFunc) {
                 super();
             }
@@ -2011,16 +1787,14 @@
                     }
                 });
 
-                result = normalizeRanges(result);
-
                 return result;
             }
         }
 
         type TextTransformContext = Atarabi.text.TextTransformContext;
 
-        class TextStyleContext implements TextStyleApplier, Atarabi.text.TextStyleFacade, Atarabi.text.TextTransformer {
-            protected builders: (TextStyleBuilder<any> | TextStyleApplier)[] = [];
+        class TextStyleContext implements TextStyleResolver, Atarabi.text.TextStyleFacade, Atarabi.text.TextTransformer {
+            protected builders: (TextStyleBuilder<any> | TextStyleResolver)[] = [];
             constructor(public globalStyle: TextLayoutOptions | TextStyleOptions = {}) {
             }
             protected transforms: ((text: string, ctx: TextTransformContext) => string)[] = [];
@@ -2028,10 +1802,10 @@
                 this.transforms.push(fn);
                 return this;
             }
-            rule<Rule>(r: Rule, style: TextStyleOptions): this {
+            rule<Rule>(rule: Rule, style: TextStyleOptions): this {
                 const builder = this.builders[this.builders.length - 1];
                 if (builder instanceof TextStyleBuilder) {
-                    builder.rule(r, style);
+                    builder.rule(rule, style);
                 }
                 return this;
             }
@@ -2104,23 +1878,17 @@
                 }
                 // global
                 for (const field in this.globalStyle) {
-                    style = applyTextStyleAll(property, style, field as keyof TextLayout | keyof TextStyle, this.globalStyle[field]);
+                    style = applyTextStyleAll(text, style, field as keyof TextLayout | keyof TextStyle, this.globalStyle[field]);
                 }
                 // local
-                for (const { from, count, style: st } of this.resolve(text)) {
+                for (const { from, count, style: st } of normalizeRanges(this.resolve(text))) {
                     style = applyStyle(style, st, from, count);
                 }
                 return style;
             }
             resolve(text: string): RangeWithStyle[] {
                 let result: RangeWithStyle[] = [];
-                for (const builder of this.builders) {
-                    if (result.length) {
-                        addNormalizedRanges(result, builder.resolve(text));
-                    } else {
-                        result = builder.resolve(text);
-                    }
-                }
+                this.builders.forEach(builder => result.push(...builder.resolve(text)))
                 return result;
             }
         }
