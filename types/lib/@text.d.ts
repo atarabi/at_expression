@@ -292,12 +292,17 @@ declare namespace Atarabi {
 
         type ForEachSentenceOptions = { locale?: string; };
 
+        interface ForEachRegExpItem {
+            text: string;
+            range: Range;
+        }
+
         interface ForEachRegExpContext {
             readonly index: number;
             readonly patternIndex: number;
         }
 
-        type ForEachRegExpFunc = (match: RegExpExecArray, ctx: ForEachRegExpContext) => RangeWithStyle | RangeWithStyle[] | void;
+        type ForEachRegExpFunc = (match: (ForEachRegExpItem | null)[], ctx: ForEachRegExpContext) => RangeWithStyle | RangeWithStyle[] | void;
 
         interface ForEachSurroundingContext {
             readonly depth: number;

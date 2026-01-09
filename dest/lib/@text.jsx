@@ -1554,11 +1554,24 @@
                         break;
                     const chosen = regexes[bestIndex];
                     const match = chosen.match;
-                    const from = match.index;
-                    const count = match[0].length;
-                    const r = fn(match, { index, patternIndex: chosen.id });
+                    const items = [{
+                            text: match[0],
+                            range: { from: 0, count: match[0].length },
+                        }];
+                    for (let i = 1; i < match.length; i++) {
+                        if (match[i] == null) {
+                            items.push(null);
+                            continue;
+                        }
+                        const start = match[0].indexOf(match[i]);
+                        const length = match[i].length;
+                        items.push({ text: match[i], range: { from: start, count: length } });
+                    }
+                    const r = fn(items, { index, patternIndex: chosen.id });
                     ++index;
                     if (r) {
+                        const from = match.index;
+                        const count = match[0].length;
                         applyRange(result, r, from, count);
                     }
                     const advance = match[0].length > 0 ? match[0].length : 1;
