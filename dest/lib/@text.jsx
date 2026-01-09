@@ -210,37 +210,6 @@
             }
             throw new Error(`Invalid field: ${field}`);
         }
-        function applyTextLayoutField(style, field, value) {
-            switch (field) {
-                case "direction":
-                    return style.setDirection(value);
-                case "firstLineIndent":
-                    return style.setFirstLineIndent(value);
-                case "isEveryLineComposer":
-                    return style.setEveryLineComposer(value);
-                case "isHangingRoman":
-                    return style.setHangingRoman(value);
-                case "justification":
-                    return style.setJustification(value);
-                case "leadingType":
-                    return style.setLeadingType(value);
-                case "leftMargin":
-                    return style.setLeftMargin(value);
-                case "rightMargin":
-                    return style.setRightMargin(value);
-                case "spaceAfter":
-                    return style.setSpaceAfter(value);
-                case "spaceBefore":
-                    return style.setSpaceBefore(value);
-            }
-            throw new Error(`Invalid field: ${field}`);
-        }
-        function applyTextLayout(style, layout) {
-            for (const field in layout) {
-                style = applyTextLayoutField(style, field, layout[field]);
-            }
-            return style;
-        }
         function applyStyleField(style, field, value, startIndex, numOfCharacters) {
             switch (field) {
                 case "applyFill":
@@ -1707,7 +1676,6 @@
             resolve(text) {
                 let result = [];
                 const { sentences, lines } = segmentTextBySentence(text);
-                const graphemeSegmenter = new Intl.Segmenter(undefined, { granularity: "grapheme" });
                 const ctx = {
                     index: 0,
                     line: 0,
@@ -1843,9 +1811,9 @@
             constructor(globalStyle = {}) {
                 this.globalStyle = globalStyle;
             }
-            transformers = [];
+            transforms = [];
             transform(fn) {
-                this.transformers.push(fn);
+                this.transforms.push(fn);
                 return this;
             }
             rule(r, style) {
@@ -1918,8 +1886,8 @@
             apply(property = thisLayer.text.sourceText, style = property.style) {
                 // transform
                 const original = property.value;
-                const text = this.transformers.reduce((acc, fn) => fn(acc, { original }), original);
-                if (this.transformers.length && text !== original) {
+                const text = this.transforms.reduce((acc, fn) => fn(acc, { original }), original);
+                if (this.transforms.length && text !== original) {
                     style = replaceText(style, text);
                 }
                 // global

@@ -235,39 +235,6 @@
             throw new Error(`Invalid field: ${field}`);
         }
 
-        function applyTextLayoutField<Field extends keyof TextLayout>(style: TextStyleProperty, field: Field, value: TextLayout[Field]): TextStyleProperty {
-            switch (field) {
-                case "direction":
-                    return style.setDirection(value as any);
-                case "firstLineIndent":
-                    return style.setFirstLineIndent(value as any);
-                case "isEveryLineComposer":
-                    return style.setEveryLineComposer(value as any);
-                case "isHangingRoman":
-                    return style.setHangingRoman(value as any);
-                case "justification":
-                    return style.setJustification(value as any);
-                case "leadingType":
-                    return style.setLeadingType(value as any);
-                case "leftMargin":
-                    return style.setLeftMargin(value as any);
-                case "rightMargin":
-                    return style.setRightMargin(value as any);
-                case "spaceAfter":
-                    return style.setSpaceAfter(value as any);
-                case "spaceBefore":
-                    return style.setSpaceBefore(value as any);
-            }
-            throw new Error(`Invalid field: ${field}`);
-        }
-
-        function applyTextLayout(style: TextStyleProperty, layout: TextLayoutOptions): TextStyleProperty {
-            for (const field in layout) {
-                style = applyTextLayoutField(style, field as keyof TextLayout, layout[field]);
-            }
-            return style;
-        }
-
         function applyStyleField<Field extends keyof TextStyle>(style: TextStyleProperty, field: Field, value: TextStyle[Field], startIndex: number, numOfCharacters: number): TextStyleProperty {
             switch (field) {
                 case "applyFill":
@@ -761,7 +728,6 @@
 
         type PositionRuleItem = Atarabi.text.PositionRuleItem;
         type PositionRule = Atarabi.text.PositionRule;
-        type PositionMode = Atarabi.text.PositionMode;
         type PositionOptions = Atarabi.text.PositionOptions;
         type SkipWhen = Atarabi.text.SkipWhen;
 
@@ -1905,7 +1871,6 @@
             resolve(text: string): RangeWithStyle[] {
                 let result: RangeWithStyle[] = [];
                 const { sentences, lines } = segmentTextBySentence(text);
-                const graphemeSegmenter = new Intl.Segmenter(undefined, { granularity: "grapheme" });
                 const ctx: Mutable<SentenceContext> = {
                     index: 0,
                     line: 0,
@@ -2058,9 +2023,9 @@
             protected builders: (TextStyleBuilder<any> | TextStyleApplier)[] = [];
             constructor(public globalStyle: TextLayoutOptions | TextStyleOptions = {}) {
             }
-            protected transformers: ((text: string, ctx: TextTransformContext) => string)[] = [];
+            protected transforms: ((text: string, ctx: TextTransformContext) => string)[] = [];
             transform(fn: (text: string, ctx: TextTransformContext) => string): this {
-                this.transformers.push(fn);
+                this.transforms.push(fn);
                 return this;
             }
             rule<Rule>(r: Rule, style: TextStyleOptions): this {
@@ -2133,8 +2098,8 @@
             apply(property: TextProperty = thisLayer.text.sourceText, style: TextStyleProperty = property.style): TextStyleProperty {
                 // transform
                 const original = property.value;
-                const text = this.transformers.reduce((acc, fn) => fn(acc, {original}), original);
-                if (this.transformers.length && text !== original) {
+                const text = this.transforms.reduce((acc, fn) => fn(acc, { original }), original);
+                if (this.transforms.length && text !== original) {
                     style = replaceText(style, text);
                 }
                 // global
