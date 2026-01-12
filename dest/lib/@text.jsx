@@ -1212,12 +1212,9 @@
                 return result;
             }
         }
-        class TextStyleResolver {
-        }
-        class ForEachLine extends TextStyleResolver {
+        class ForEachLine {
             fn;
             constructor(fn) {
-                super();
                 this.fn = fn;
             }
             resolve(text) {
@@ -1234,11 +1231,10 @@
                 return result;
             }
         }
-        class ForEachGrapheme extends TextStyleResolver {
+        class ForEachGrapheme {
             fn;
             options;
             constructor(fn, options) {
-                super();
                 this.fn = fn;
                 this.options = { initState: () => ({}), ...options };
             }
@@ -1402,11 +1398,10 @@
                 return result;
             }
         }
-        class ForEachWord extends TextStyleResolver {
+        class ForEachWord {
             fn;
             options;
             constructor(fn, options) {
-                super();
                 this.fn = fn;
                 this.options = { locale: DEFAULT_LOCALE, ...options };
             }
@@ -1461,11 +1456,10 @@
                 return result;
             }
         }
-        class ForEachSentence extends TextStyleResolver {
+        class ForEachSentence {
             fn;
             options;
             constructor(fn, options) {
-                super();
                 this.fn = fn;
                 this.options = { locale: DEFAULT_LOCALE, ...options };
             }
@@ -1515,11 +1509,10 @@
                 return result;
             }
         }
-        class ForEachRegExp extends TextStyleResolver {
+        class ForEachRegExp {
             re;
             fn;
             constructor(re, fn) {
-                super();
                 this.re = re;
                 this.fn = fn;
             }
@@ -1587,12 +1580,11 @@
                 return result;
             }
         }
-        class ForEachSurrounding extends TextStyleResolver {
+        class ForEachSurrounding {
             open;
             close;
             fn;
             constructor(open, close, fn) {
-                super();
                 this.open = open;
                 this.close = close;
                 this.fn = fn;
@@ -1833,6 +1825,86 @@
                 count: Math.round(range.count)
             };
         }
+        function parseMarkdown(input, styleConfig, offset = 0) {
+            const ops = [];
+            const ranges = [];
+            let currentOutputPos = 0;
+            let lastIndex = 0;
+            const pattern = /(?<h>^(?<h_level>#{1,6})\s+(?<h_t>.*)$)|(?<b>\*\*(?<b_t>.*?)\*\*)|(?<i>_(?<i_t>.*?)_)|(?<link>\[(?<l_t>.*?)\]\((?<l_u>.*?)\))/gdm;
+            let match;
+            while ((match = pattern.exec(input)) !== null) {
+                if (match.index > lastIndex) {
+                    const count = match.index - lastIndex;
+                    ops.push({ type: "move", range: { from: offset + lastIndex, count }, to: currentOutputPos });
+                    currentOutputPos += count;
+                }
+                const groups = match.groups;
+                const indices = match.indices.groups;
+                let content = "";
+                let contentStart = 0;
+                let currentStyle = null;
+                if (groups.h) {
+                    const level = groups.h_level.length;
+                    content = groups.h_t;
+                    contentStart = indices.h_t[0];
+                    const hKey = `h${level}`;
+                    currentStyle = styleConfig[hKey];
+                }
+                else if (groups.b) {
+                    content = groups.b_t;
+                    contentStart = indices.b_t[0];
+                    currentStyle = styleConfig.b;
+                }
+                else if (groups.i) {
+                    content = groups.i_t;
+                    contentStart = indices.i_t[0];
+                    currentStyle = styleConfig.i;
+                }
+                else if (groups.link) {
+                    content = groups.l_t;
+                    contentStart = indices.l_t[0];
+                    currentStyle = styleConfig.a;
+                }
+                const sub = parseMarkdown(content, styleConfig, offset + contentStart);
+                for (const subOp of sub.ops) {
+                    if (subOp.type === "move") {
+                        ops.push({ ...subOp, to: subOp.to + currentOutputPos });
+                    }
+                    else if (subOp.type === "insert") {
+                        ops.push({ ...subOp, at: subOp.at + currentOutputPos });
+                    }
+                }
+                ranges.push(...sub.styles);
+                if (currentStyle) {
+                    ranges.push({
+                        from: offset + contentStart,
+                        count: content.length,
+                        style: currentStyle
+                    });
+                }
+                currentOutputPos += sub.text.length;
+                lastIndex = match.index + match[0].length;
+            }
+            if (lastIndex < input.length) {
+                const count = input.length - lastIndex;
+                ops.push({ type: "move", range: { from: offset + lastIndex, count }, to: currentOutputPos });
+            }
+            const text = ops
+                .filter((op) => op.type === "move")
+                .map(op => input.slice(op.range.from - offset, op.range.from - offset + op.range.count))
+                .join("");
+            return { text, styles: ranges, ops };
+        }
+        class AsMarkdown {
+            style;
+            constructor(style) {
+                this.style = style;
+            }
+            resolve(text) {
+                const { styles, ops } = parseMarkdown(text, this.style);
+                return { styles, ops };
+            }
+        }
         class TextStyleContext {
             globalStyle;
             items = [];
@@ -1874,6 +1946,10 @@
             }
             addBuilder(builder) {
                 this.items.push({ builder, replaces: [] });
+            }
+            asMarkdown(style) {
+                this.addBuilder(new AsMarkdown(style));
+                return this;
             }
             byCharClass(options) {
                 this.addBuilder(new CharClassTextStyleBuilder(options));

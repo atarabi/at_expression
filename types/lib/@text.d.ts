@@ -142,6 +142,18 @@ declare namespace Atarabi {
 
         type TextStyleOptions = Partial<TextStyle>;
 
+        interface MarkdownStyle {
+            h1: TextStyleOptions;
+            h2: TextStyleOptions;
+            h3: TextStyleOptions;
+            h4: TextStyleOptions;
+            h5: TextStyleOptions;
+            h6: TextStyleOptions;
+            i: TextStyleOptions;
+            b: TextStyleOptions;
+            a: TextStyleOptions;
+        }
+
         type Range = { from: number; count?: number };
 
         type RangeWithStyle = Range & { style: TextStyleOptions };
@@ -329,6 +341,8 @@ declare namespace Atarabi {
         type ReplaceTransformMap = Record<ReplaceTransformKey, (text: string) => string>;
 
         type TextStyleFacade = {
+            // as
+            asMarkdown(style: Partial<MarkdownStyle>): TextStyleContext;
             // static
             byCharClass(options?: CharClassOptions): TextStyleContext<CharClassTextStyleBuilder>;
             byRegExp(): TextStyleContext<RegExpTextStyleBuilder>;

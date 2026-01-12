@@ -361,7 +361,11 @@
             return result;
         }
 
-        abstract class TextStyleBuilder<Rule> implements Atarabi.Text.TextStyleBuilder<Rule> {
+        interface TextStyleResolver {
+            resolve(text: string): RangeWithStyle[] | { styles: RangeWithStyle[]; ops: TransformOp[]; };
+        }
+
+        abstract class TextStyleBuilder<Rule> implements TextStyleResolver, Atarabi.Text.TextStyleBuilder<Rule> {
             protected items: { rule: Rule; style: TextStyleOptions }[] = [];
             rule(rule: Rule, style: TextStyleOptions): this {
                 this.items.push({ rule, style });
@@ -1395,15 +1399,10 @@
             }
         }
 
-        abstract class TextStyleResolver {
-            abstract resolve(text: string): RangeWithStyle[];
-        }
-
         type ForEachLineFunc = Atarabi.Text.ForEachLineFunc;
 
-        class ForEachLine extends TextStyleResolver {
+        class ForEachLine implements TextStyleResolver {
             constructor(public fn: ForEachLineFunc) {
-                super();
             }
             resolve(text: string): RangeWithStyle[] {
                 let result: RangeWithStyle[] = [];
@@ -1423,10 +1422,9 @@
         type ForEachGraphemeFunc = Atarabi.Text.ForEachGraphemeFunc;
         type ForEachGraphemeOptions = Atarabi.Text.ForEachGraphemeOptions;
 
-        class ForEachGrapheme extends TextStyleResolver {
+        class ForEachGrapheme implements TextStyleResolver {
             protected options: ForEachGraphemeOptions;
             constructor(public fn: ForEachGraphemeFunc, options?: ForEachGraphemeOptions) {
-                super();
                 this.options = { initState: () => ({}), ...options };
             }
             resolve(text: string): RangeWithStyle[] {
@@ -1585,10 +1583,9 @@
         type ForEachWordFunc = Atarabi.Text.ForEachWordFunc;
         type ForEachWordOptions = Atarabi.Text.ForEachWordOptions;
 
-        class ForEachWord extends TextStyleResolver {
+        class ForEachWord implements TextStyleResolver {
             protected options: ForEachWordOptions;
             constructor(public fn: ForEachWordFunc, options?: ForEachWordOptions) {
-                super();
                 this.options = { locale: DEFAULT_LOCALE, ...options };
             }
             resolve(text: string): RangeWithStyle[] {
@@ -1648,10 +1645,9 @@
         type ForEachSentenceFunc = Atarabi.Text.ForEachSentenceFunc;
         type ForEachSentenceOptions = Atarabi.Text.ForEachSentenceOptions;
 
-        class ForEachSentence extends TextStyleResolver {
+        class ForEachSentence implements TextStyleResolver {
             protected options: ForEachSentenceOptions;
             constructor(public fn: ForEachSentenceFunc, options?: ForEachSentenceOptions) {
-                super();
                 this.options = { locale: DEFAULT_LOCALE, ...options };
             }
             resolve(text: string): RangeWithStyle[] {
@@ -1706,9 +1702,8 @@
         type ForEachRegExpFunc = Atarabi.Text.ForEachRegExpFunc;
         type ForEachRegExpItem = Atarabi.Text.ForEachRegExpItem;
 
-        class ForEachRegExp extends TextStyleResolver {
+        class ForEachRegExp implements TextStyleResolver {
             constructor(public re: RegExp | RegExp[], public fn: ForEachRegExpFunc) {
-                super();
             }
             resolve(text: string): RangeWithStyle[] {
                 let result: RangeWithStyle[] = [];
@@ -1789,9 +1784,8 @@
 
         type ForEachSurroundingFunc = Atarabi.Text.ForEachSurroundingFunc;
 
-        class ForEachSurrounding extends TextStyleResolver {
+        class ForEachSurrounding implements TextStyleResolver {
             constructor(public open: string, public close: string, public fn: ForEachSurroundingFunc) {
-                super();
             }
             resolve(text: string): RangeWithStyle[] {
                 let result: RangeWithStyle[] = [];
@@ -2068,6 +2062,94 @@
             };
         }
 
+        function parseMarkdown(input: string, styleConfig: Partial<Atarabi.Text.MarkdownStyle>, offset: number = 0): { text: string; styles: RangeWithStyle[]; ops: TransformOp[] } {
+            const ops: TransformOp[] = [];
+            const ranges: RangeWithStyle[] = [];
+            let currentOutputPos = 0;
+            let lastIndex = 0;
+
+            const pattern = /(?<h>^(?<h_level>#{1,6})\s+(?<h_t>.*)$)|(?<b>\*\*(?<b_t>.*?)\*\*)|(?<i>_(?<i_t>.*?)_)|(?<link>\[(?<l_t>.*?)\]\((?<l_u>.*?)\))/gdm;
+
+            let match: any;
+            while ((match = pattern.exec(input)) !== null) {
+                if (match.index > lastIndex) {
+                    const count = match.index - lastIndex;
+                    ops.push({ type: "move", range: { from: offset + lastIndex, count }, to: currentOutputPos });
+                    currentOutputPos += count;
+                }
+
+                const groups = match.groups;
+                const indices = match.indices.groups;
+
+                let content = "";
+                let contentStart = 0;
+                let currentStyle: TextStyleOptions = null;
+
+                if (groups.h) {
+                    const level = groups.h_level.length;
+                    content = groups.h_t;
+                    contentStart = indices.h_t[0];
+                    const hKey = `h${level}` as keyof Atarabi.Text.MarkdownStyle;
+                    currentStyle = styleConfig[hKey];
+                } else if (groups.b) {
+                    content = groups.b_t;
+                    contentStart = indices.b_t[0];
+                    currentStyle = styleConfig.b;
+                } else if (groups.i) {
+                    content = groups.i_t;
+                    contentStart = indices.i_t[0];
+                    currentStyle = styleConfig.i;
+                } else if (groups.link) {
+                    content = groups.l_t;
+                    contentStart = indices.l_t[0];
+                    currentStyle = styleConfig.a;
+                }
+
+                const sub = parseMarkdown(content, styleConfig, offset + contentStart);
+
+                for (const subOp of sub.ops) {
+                    if (subOp.type === "move") {
+                        ops.push({ ...subOp, to: subOp.to + currentOutputPos });
+                    } else if (subOp.type === "insert") {
+                        ops.push({ ...subOp, at: subOp.at + currentOutputPos });
+                    }
+                }
+
+                ranges.push(...sub.styles);
+
+                if (currentStyle) {
+                    ranges.push({
+                        from: offset + contentStart,
+                        count: content.length,
+                        style: currentStyle
+                    });
+                }
+
+                currentOutputPos += sub.text.length;
+                lastIndex = match.index + match[0].length;
+            }
+
+            if (lastIndex < input.length) {
+                const count = input.length - lastIndex;
+                ops.push({ type: "move", range: { from: offset + lastIndex, count }, to: currentOutputPos });
+            }
+
+            const text = ops
+                .filter((op): op is Extract<TransformOp, { type: "move" }> => op.type === "move")
+                .map(op => input.slice(op.range.from - offset, op.range.from - offset + op.range.count))
+                .join("");
+
+            return { text, styles: ranges, ops };
+        }
+
+        class AsMarkdown implements TextStyleResolver {
+            constructor(protected style: Partial<Atarabi.Text.MarkdownStyle>) { }
+            resolve(text: string): { styles: RangeWithStyle[]; ops: TransformOp[]; } {
+                const { styles, ops } = parseMarkdown(text, this.style);
+                return { styles, ops };
+            }
+        }
+
         type TextTransformContext = Atarabi.Text.TextTransformContext;
 
         class TextStyleContext implements Atarabi.Text.TextInputter, Atarabi.Text.TextTransformer, Atarabi.Text.TextStyleFacade {
@@ -2105,6 +2187,10 @@
             }
             protected addBuilder(builder: TextStyleBuilder<any> | TextStyleResolver) {
                 this.items.push({ builder, replaces: [] });
+            }
+            asMarkdown(style: Partial<Atarabi.Text.MarkdownStyle>): this {
+                this.addBuilder(new AsMarkdown(style));
+                return this;
             }
             byCharClass(options?: CharClassOptions): this {
                 this.addBuilder(new CharClassTextStyleBuilder(options));
