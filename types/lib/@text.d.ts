@@ -23,7 +23,7 @@ declare namespace Atarabi {
         interface Lib {
             CharClass: CharClassMap;
             createMatcher: typeof createMatcher;
-            TextStyle(globalStyle?: TextLayoutOptions | TextStyleOptions): TextStyleContext & TextTransformer;
+            TextStyle(globalStyle?: TextLayoutOptions | TextStyleOptions): TextStyleContext & TextInputter & TextTransformer;
         }
 
         type CharClassKey =
@@ -312,6 +312,10 @@ declare namespace Atarabi {
         }
 
         type ForEachSurroundingFunc = (text: string, ctx: ForEachSurroundingContext) => RangeWithStyle | RangeWithStyle[] | void;
+
+        interface TextInputter {
+            input(text: string): this;
+        }
 
         interface TextTransformContext {
             readonly original: string;

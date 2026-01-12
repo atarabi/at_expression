@@ -1840,9 +1840,18 @@
                 this.globalStyle = globalStyle;
             }
             transforms = [];
+            inputText = null;
+            input(text) {
+                if (this.items.length)
+                    throw new Error(`input() must be called before calling as...(), by...(), forEach...()`);
+                if (this.transforms.length)
+                    throw new Error(`input() must be called before transform()`);
+                this.inputText = text;
+                return this;
+            }
             transform(fn) {
                 if (this.items.length)
-                    throw new Error(`transform() must be called before calling by...() or forEach...()`);
+                    throw new Error(`transform() must be called before calling as...(), by...(), forEach...()`);
                 this.transforms.push(fn);
                 return this;
             }
@@ -1929,11 +1938,20 @@
             apply(property = thisLayer.text.sourceText, style = property.style) {
                 // transform
                 const original = property.value;
-                let text = this.transforms.reduce((acc, fn) => fn(acc, { original }), original);
+                const inputText = this.inputText ?? original;
+                let text = this.transforms.reduce((acc, fn) => fn(acc, { original: inputText }), inputText);
                 // resolve
                 let ranges = [];
                 for (const { builder, replaces } of this.items) {
-                    ranges.push(...builder.resolve(text));
+                    const resolved = builder.resolve(text);
+                    if (Array.isArray(resolved)) {
+                        ranges.push(...resolved);
+                    }
+                    else {
+                        ranges.push(...resolved.styles);
+                        text = applyTransformOp(text, resolved.ops);
+                        ranges = updateRanges(ranges, resolved.ops);
+                    }
                     for (const { pattern, replacement, transforms } of replaces) {
                         const { output, ops } = applyReplace(text, pattern, replacement, transforms);
                         text = output;
@@ -1949,8 +1967,11 @@
                     style = replaceText(style, text);
                 }
                 // local
+                const len = text.length;
                 for (const { from, count, style: st } of ranges) {
-                    style = applyStyle(style, st, from, count);
+                    if (from >= len)
+                        continue;
+                    style = applyStyle(style, st, from, Math.min(count, len - from));
                 }
                 return style;
             }

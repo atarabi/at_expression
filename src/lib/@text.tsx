@@ -6,9 +6,12 @@
             return LIB.Text;
         }
 
-        const DEFAULT_LOCALE = Intl.DateTimeFormat().resolvedOptions().locale;
-
+        type Range = Atarabi.Text.Range;
+        type RangeWithStyle = Atarabi.Text.RangeWithStyle;
+        type RangeWithIndex = Range & { index: number; };
+        type TransformOp = { type: "insert"; at: number; text: string; } | { type: "move"; range: Range; to: number; transformedText?: string; };
         type CharClassKey = Atarabi.Text.CharClassKey;
+        const DEFAULT_LOCALE = Intl.DateTimeFormat().resolvedOptions().locale;
 
         class CharClass implements Atarabi.Text.CharClass {
             private _re: RegExp;
@@ -125,10 +128,6 @@
             }
             return sentenceSegmenterCache.get(locale)!;
         }
-
-        type Range = Atarabi.Text.Range;
-        type RangeWithStyle = Atarabi.Text.RangeWithStyle;
-        type RangeWithIndex = Range & { index: number; };
 
         function mergeRanges(ranges: Range[]): Range[] {
             if (ranges.length === 0) return [];
@@ -368,7 +367,7 @@
                 this.items.push({ rule, style });
                 return this;
             }
-            abstract resolve(text: string): RangeWithStyle[];
+            abstract resolve(text: string): RangeWithStyle[] | { styles: RangeWithStyle[]; ops: TransformOp[]; };
         }
 
         type CharClassRule = Atarabi.Text.CharClassRule;
@@ -1844,7 +1843,6 @@
             return { pattern: finalPattern, replacement: finalReplacement, transforms: finalTransforms };
         }
 
-        type TransformOp = { type: "insert"; at: number; text: string; } | { type: "move"; range: Range; to: number; transformedText?: string; };
         type ReplacementPart = { type: "text"; value: string; } | { type: "group"; index: number | string; };
 
         function parseReplacement(replacement: string, match: RegExpExecArray): ReplacementPart[] {
@@ -2072,13 +2070,20 @@
 
         type TextTransformContext = Atarabi.Text.TextTransformContext;
 
-        class TextStyleContext implements Atarabi.Text.TextStyleFacade, Atarabi.Text.TextTransformer {
+        class TextStyleContext implements Atarabi.Text.TextInputter, Atarabi.Text.TextTransformer, Atarabi.Text.TextStyleFacade {
             protected items: { builder: (TextStyleBuilder<any> | TextStyleResolver); replaces: { pattern: RegExp; replacement: string; transforms: ReplaceTransformMap; }[]; }[] = [];
             constructor(public globalStyle: TextLayoutOptions | TextStyleOptions = {}) {
             }
             protected transforms: ((text: string, ctx: TextTransformContext) => string)[] = [];
+            protected inputText: string = null;
+            input(text: string): this {
+                if (this.items.length) throw new Error(`input() must be called before calling as...(), by...(), forEach...()`);
+                if (this.transforms.length) throw new Error(`input() must be called before transform()`);
+                this.inputText = text;
+                return this;
+            }
             transform(fn: (text: string, ctx: TextTransformContext) => string): this {
-                if (this.items.length) throw new Error(`transform() must be called before calling by...() or forEach...()`);
+                if (this.items.length) throw new Error(`transform() must be called before calling as...(), by...(), forEach...()`);
                 this.transforms.push(fn);
                 return this;
             }
@@ -2164,11 +2169,19 @@
             apply(property: TextProperty = thisLayer.text.sourceText, style: TextStyleProperty = property.style): TextStyleProperty {
                 // transform
                 const original = property.value;
-                let text = this.transforms.reduce((acc, fn) => fn(acc, { original }), original);
+                const inputText = this.inputText ?? original;
+                let text = this.transforms.reduce((acc, fn) => fn(acc, { original: inputText }), inputText);
                 // resolve
                 let ranges: RangeWithStyle[] = [];
                 for (const { builder, replaces } of this.items) {
-                    ranges.push(...builder.resolve(text));
+                    const resolved = builder.resolve(text);
+                    if (Array.isArray(resolved)) {
+                        ranges.push(...resolved);
+                    } else {
+                        ranges.push(...resolved.styles);
+                        text = applyTransformOp(text, resolved.ops);
+                        ranges = updateRanges(ranges, resolved.ops);
+                    }
                     for (const { pattern, replacement, transforms } of replaces) {
                         const { output, ops } = applyReplace(text, pattern, replacement, transforms);
                         text = output;
@@ -2184,8 +2197,10 @@
                     style = replaceText(style, text);
                 }
                 // local
+                const len = text.length;
                 for (const { from, count, style: st } of ranges) {
-                    style = applyStyle(style, st, from, count);
+                    if (from >= len) continue;
+                    style = applyStyle(style, st, from, Math.min(count, len - from));
                 }
                 return style;
             }
