@@ -1610,6 +1610,29 @@
                 return result;
             }
         }
+        function prepareReplaceArgs(pattern, replacement, transforms = {}) {
+            if (pattern instanceof RegExp) {
+                if (typeof replacement === "function") {
+                    return {
+                        pattern: pattern,
+                        replacement: "$&",
+                        transforms: { ...transforms, "$0": replacement },
+                    };
+                }
+                return { pattern, replacement, transforms, };
+            }
+            const escaped = pattern.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+            const finalPattern = new RegExp(`(${escaped})`, 'g');
+            const finalReplacement = "$1";
+            const finalTransforms = { ...transforms };
+            if (typeof replacement === "string") {
+                finalTransforms["$1"] = () => replacement;
+            }
+            else {
+                finalTransforms["$1"] = replacement;
+            }
+            return { pattern: finalPattern, replacement: finalReplacement, transforms: finalTransforms };
+        }
         function parseReplacement(replacement, match) {
             const parts = [];
             const $re = /\$([$&`']|\d{1,2}|<[^>]+>)/g;
@@ -1649,37 +1672,38 @@
             return parts;
         }
         function getGroupOffsets(match) {
-            const fullMatch = match[0];
-            const offsets = [];
-            offsets[0] = { start: 0, end: fullMatch.length };
-            let currentPos = 0;
-            for (let i = 1; i < match.length; i++) {
-                const groupText = match[i];
-                if (groupText === undefined) {
-                    offsets[i] = { start: -1, end: -1 };
-                    continue;
+            const offsets = {};
+            match.indices.forEach((range, i) => {
+                if (range) {
+                    offsets[i] = {
+                        start: range[0] - match.index,
+                        end: range[1] - match.index
+                    };
                 }
-                const start = fullMatch.indexOf(groupText, currentPos);
-                if (start !== -1) {
-                    offsets[i] = { start, end: start + groupText.length };
-                    currentPos = start;
-                }
-                else {
-                    offsets[i] = { start: -1, end: -1 };
+            });
+            if (match.indices.groups) {
+                for (const name in match.indices.groups) {
+                    const range = match.indices.groups[name];
+                    if (range) {
+                        offsets[name] = {
+                            start: range[0] - match.index,
+                            end: range[1] - match.index
+                        };
+                    }
                 }
             }
             return offsets;
         }
-        function applyReplace(input, pattern, replacement) {
+        function applyReplace(input, pattern, replacement, transforms) {
             const ops = [];
             let currentOutputPos = 0;
             let lastMatchEnd = 0;
-            const finalFlags = ensureFlags(pattern.flags, ["g", "d"]);
+            const isGlobal = pattern.flags.includes('g');
+            const finalFlags = ensureFlags(pattern.flags, ['d']);
             const re = new RegExp(pattern.source, finalFlags);
             let match = null;
             while ((match = re.exec(input)) !== null) {
                 const matchStart = match.index;
-                const matchEnd = matchStart + match[0].length;
                 if (matchStart > lastMatchEnd) {
                     const len = matchStart - lastMatchEnd;
                     ops.push({ type: "move", range: { from: lastMatchEnd, count: len }, to: currentOutputPos });
@@ -1687,7 +1711,6 @@
                 }
                 const parts = parseReplacement(replacement, match);
                 const groupOffsets = getGroupOffsets(match);
-                const usedGroups = new Set();
                 for (const part of parts) {
                     if (part.type === "text") {
                         ops.push({ type: "insert", at: currentOutputPos, text: part.value });
@@ -1698,58 +1721,82 @@
                         const offset = groupOffsets[idx];
                         const groupText = (typeof idx === "number" ? match[idx] : match.groups?.[idx]) || "";
                         if (offset) {
-                            ops.push({
+                            const transformKey = typeof idx === 'number' ? `$${idx}` : `$<${idx}>`;
+                            const transformFn = transforms[transformKey];
+                            const moveOp = {
                                 type: "move",
                                 range: { from: matchStart + offset.start, count: groupText.length },
                                 to: currentOutputPos
-                            });
-                            usedGroups.add(idx);
+                            };
+                            if (transformFn) {
+                                moveOp.transformedText = transformFn(groupText);
+                            }
+                            ops.push(moveOp);
+                            currentOutputPos += (moveOp.transformedText ?? groupText).length;
+                        }
+                        else {
+                            ops.push({ type: "insert", at: currentOutputPos, text: groupText });
                             currentOutputPos += groupText.length;
                         }
                     }
                 }
-                lastMatchEnd = matchEnd;
-                if (match[0].length === 0)
+                lastMatchEnd = matchStart + match[0].length;
+                if (!isGlobal) {
+                    break;
+                }
+                if (match[0].length === 0) {
                     re.lastIndex++;
+                }
             }
             if (lastMatchEnd < input.length) {
                 const len = input.length - lastMatchEnd;
-                ops.push({ type: "move", range: { from: lastMatchEnd, count: len }, to: currentOutputPos });
+                ops.push({
+                    type: "move",
+                    range: { from: lastMatchEnd, count: len },
+                    to: currentOutputPos
+                });
             }
             return { output: applyTransformOp(input, ops), ops };
         }
         function applyTransformOp(input, ops) {
-            const components = [];
-            for (const op of ops) {
-                if (op.type === "insert") {
-                    components.push({ at: op.at, text: op.text });
-                }
-                else if (op.type === "move") {
-                    const text = input.slice(op.range.from, op.range.from + op.range.count);
-                    components.push({ at: op.to, text: text });
-                }
-            }
-            components.sort((a, b) => a.at - b.at);
-            return components.map(c => c.text).join("");
+            const sortedOps = [...ops].sort((a, b) => {
+                const posA = a.type === "insert" ? a.at : a.to;
+                const posB = b.type === "insert" ? b.at : b.to;
+                return posA - posB;
+            });
+            return sortedOps.map(op => {
+                if (op.type === "insert")
+                    return op.text;
+                return op.transformedText ?? input.slice(op.range.from, op.range.from + op.range.count);
+            }).join("");
         }
         function updateRanges(ranges, ops) {
             const newRanges = [];
             const moveOps = ops.filter((op) => op.type === "move");
             for (const range of ranges) {
-                const rangeStart = range.from;
-                const rangeEnd = range.from + range.count;
                 const fragments = [];
+                const rangeEnd = range.from + range.count;
                 for (const move of moveOps) {
-                    const moveSrcStart = move.range.from;
                     const moveSrcEnd = move.range.from + move.range.count;
-                    const intersectStart = Math.max(rangeStart, moveSrcStart);
+                    const intersectStart = Math.max(range.from, move.range.from);
                     const intersectEnd = Math.min(rangeEnd, moveSrcEnd);
                     if (intersectStart < intersectEnd) {
-                        fragments.push({
-                            ...range,
-                            from: move.to + (intersectStart - moveSrcStart),
-                            count: intersectEnd - intersectStart
-                        });
+                        if (move.transformedText === undefined) {
+                            fragments.push({
+                                ...range,
+                                from: move.to + (intersectStart - move.range.from),
+                                count: intersectEnd - intersectStart
+                            });
+                        }
+                        else {
+                            const outLen = move.transformedText.length;
+                            const scale = outLen / move.range.count;
+                            fragments.push({
+                                ...range,
+                                from: move.to + (intersectStart - move.range.from) * scale,
+                                count: (intersectEnd - intersectStart) * scale
+                            });
+                        }
                     }
                 }
                 if (fragments.length > 0) {
@@ -1757,18 +1804,34 @@
                     let merged = { ...fragments[0] };
                     for (let i = 1; i < fragments.length; i++) {
                         const next = fragments[i];
-                        if (merged.from + merged.count === next.from) {
-                            merged.count += next.count;
+                        const gap = next.from - (merged.from + merged.count);
+                        const isContinuous = Number.isInteger(gap) ? gap === 0 : Math.abs(gap) < 0.5;
+                        if (isContinuous) {
+                            merged.count = (next.from + next.count) - merged.from;
                         }
                         else {
-                            newRanges.push(merged);
+                            const finalized = finalizeRange(merged);
+                            if (finalized.count > 0)
+                                newRanges.push(finalized);
                             merged = { ...next };
                         }
                     }
-                    newRanges.push(merged);
+                    const finalized = finalizeRange(merged);
+                    if (finalized.count > 0)
+                        newRanges.push(finalized);
                 }
             }
             return newRanges;
+        }
+        function finalizeRange(range) {
+            if (Number.isInteger(range.from) && Number.isInteger(range.count)) {
+                return range;
+            }
+            return {
+                ...range,
+                from: Math.round(range.from),
+                count: Math.round(range.count)
+            };
         }
         class TextStyleContext {
             globalStyle;
@@ -1783,15 +1846,13 @@
                 this.transforms.push(fn);
                 return this;
             }
-            replace(pattern, replacement) {
-                if (!(pattern instanceof RegExp)) {
-                    throw new Error(`pattern must be RegExp: ${pattern}`);
-                }
+            replace(pattern, replacement, transforms = {}) {
+                const args = prepareReplaceArgs(pattern, replacement, transforms);
                 if (this.items.length) {
-                    this.items[this.items.length - 1].replaces.push({ pattern, replacement });
+                    this.items[this.items.length - 1].replaces.push({ pattern: args.pattern, replacement: args.replacement, transforms: args.transforms });
                 }
                 else {
-                    this.transforms.push(text => applyReplace(text, pattern, replacement).output);
+                    this.transforms.push(text => applyReplace(text, args.pattern, args.replacement, args.transforms).output);
                 }
                 return this;
             }
@@ -1873,8 +1934,8 @@
                 let ranges = [];
                 for (const { builder, replaces } of this.items) {
                     ranges.push(...builder.resolve(text));
-                    for (const { pattern, replacement } of replaces) {
-                        const { output, ops } = applyReplace(text, pattern, replacement);
+                    for (const { pattern, replacement, transforms } of replaces) {
+                        const { output, ops } = applyReplace(text, pattern, replacement, transforms);
                         text = output;
                         ranges = updateRanges(ranges, ops);
                     }

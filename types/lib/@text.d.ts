@@ -323,6 +323,9 @@ declare namespace Atarabi {
             transform(fn: (text: string, ctx: TextTransformContext) => string): this;
         }
 
+        type ReplaceTransformKey = `$${number}` | `$<${string}>`;
+        type ReplaceTransformMap = Record<ReplaceTransformKey, (text: string) => string>;
+
         type TextStyleFacade = {
             // static
             byCharClass(options?: CharClassOptions): TextStyleContext<CharClassTextStyleBuilder>;
@@ -343,7 +346,7 @@ declare namespace Atarabi {
             forEachRegExp(re: RegExp | RegExp[], fn: ForEachRegExpFunc): TextStyleContext;
             forEachSurrounding(open: string, close: string, fn: ForEachSurroundingFunc): TextStyleContext;
             // replace
-            replace(pattern: RegExp, replacement: string): TextStyleContext;
+            replace(pattern: RegExp | string, replacement: string | ((text: string) => string), transforms?: ReplaceTransformMap): TextStyleContext;
         };
 
         type TextStyleContext<Builder extends object = {}> = Builder & TextStyleApplier & TextStyleFacade;
