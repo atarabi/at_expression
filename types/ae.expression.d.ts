@@ -327,6 +327,11 @@ declare class Effect {
     param(index: number): Property;
 }
 
+interface Effect {
+    (name: string): Property;
+    (index: number): Property;
+}
+
 /*
  * Mask: https://ae-expressions.docsforadobe.dev/objects/mask/
  */
