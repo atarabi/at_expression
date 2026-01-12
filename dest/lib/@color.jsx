@@ -1,8 +1,8 @@
 ({
     load(force = false) {
-        const LIB = $.__lib = $.__lib || {};
-        if (!force && LIB.color) {
-            return LIB.color;
+        const LIB = $.__Atarabi = $.__Atarabi || {};
+        if (!force && LIB.Color) {
+            return LIB.Color;
         }
         function calculateCompletion(c, c1, c2) {
             let bestIndex = -1;
@@ -582,7 +582,7 @@
             Oklab,
             Oklch,
         };
-        LIB.color = lib;
+        LIB.Color = lib;
         return lib;
     },
 })

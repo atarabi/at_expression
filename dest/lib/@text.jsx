@@ -1,8 +1,8 @@
 ({
     load(force = false) {
-        const LIB = $.__lib = $.__lib || {};
-        if (!force && LIB.text) {
-            return LIB.text;
+        const LIB = $.__Atarabi = $.__Atarabi || {};
+        if (!force && LIB.Text) {
+            return LIB.Text;
         }
         const DEFAULT_LOCALE = Intl.DateTimeFormat().resolvedOptions().locale;
         class CharClass {
@@ -73,6 +73,15 @@
             }
             return Object.freeze(registry);
         })();
+        function ensureFlags(currentFlags, flagsToAdd) {
+            let newFlags = currentFlags;
+            for (const f of flagsToAdd) {
+                if (!newFlags.includes(f)) {
+                    newFlags += f;
+                }
+            }
+            return newFlags;
+        }
         function createMatcher(matchers) {
             if (!matchers)
                 return () => false;
@@ -208,35 +217,33 @@
             }
             return style;
         }
-        function shallowEqual(a, b) {
+        function styleEqual(a, b) {
             if (a === b)
                 return true;
-            if (typeof a !== "object" || typeof b !== "object" || a === null || b === null) {
+            if (typeof a !== "object" || a === null || typeof b !== "object" || b === null) {
                 return false;
             }
-            const ka = Object.keys(a);
-            const kb = Object.keys(b);
-            if (ka.length !== kb.length)
+            const keysA = Object.keys(a);
+            const keysB = Object.keys(b);
+            if (keysA.length !== keysB.length)
                 return false;
-            for (const k of ka) {
-                if (!(k in b))
+            for (let i = 0; i < keysA.length; i++) {
+                const key = keysA[i];
+                if (!Object.prototype.hasOwnProperty.call(b, key))
                     return false;
-                const va = a[k];
-                const vb = b[k];
-                if (Array.isArray(va) && Array.isArray(vb)) {
-                    if (va.length !== vb.length)
+                const valA = a[key];
+                const valB = b[key];
+                if (Array.isArray(valA) && Array.isArray(valB)) {
+                    if (valA.length !== valB.length)
                         return false;
-                    for (let i = 0; i < va.length; i++) {
-                        if (va[i] !== vb[i])
+                    for (let j = 0; j < valA.length; j++) {
+                        if (valA[j] !== valB[j])
                             return false;
                     }
-                    continue;
                 }
-                if (Array.isArray(va) || Array.isArray(vb)) {
+                else if (valA !== valB) {
                     return false;
                 }
-                if (va !== vb)
-                    return false;
             }
             return true;
         }
@@ -273,7 +280,7 @@
                         style = { ...style, ...r.style };
                     }
                     const last = result[result.length - 1];
-                    if (last && last.from + last.count === lastPos && shallowEqual(last.style, style)) {
+                    if (last && last.from + last.count === lastPos && styleEqual(last.style, style)) {
                         last.count += e.pos - lastPos;
                     }
                     else {
@@ -334,7 +341,7 @@
             })();
             const ranges = [];
             for (const re0 of res) {
-                const flags = re0.flags.includes("g") ? re0.flags : re0.flags + "g";
+                const flags = ensureFlags(re0.flags, ["g"]);
                 const re = new RegExp(re0.source, flags);
                 let m;
                 while ((m = re.exec(text)) !== null) {
@@ -429,7 +436,7 @@
             const regexList = Array.isArray(res) ? res : [res];
             const ranges = [];
             for (const re of regexList) {
-                const regex = new RegExp(re.source, re.flags.includes("g") ? re.flags : re.flags + "g");
+                const regex = new RegExp(re.source, ensureFlags(re.flags, ["g"]));
                 let match;
                 while ((match = regex.exec(text)) !== null) {
                     if (match[0].length === 0) {
@@ -1521,7 +1528,7 @@
                 const patterns = Array.isArray(this.re) ? this.re : [this.re];
                 const regexes = patterns.map((r, i) => ({
                     id: i,
-                    re: new RegExp(r.source, r.flags.includes("g") ? r.flags : r.flags + "g"),
+                    re: new RegExp(r.source, ensureFlags(r.flags, ["g", "d"])),
                     match: null,
                 }));
                 const fn = this.fn;
@@ -1563,9 +1570,8 @@
                             items.push(null);
                             continue;
                         }
-                        const start = match[0].indexOf(match[i]);
-                        const length = match[i].length;
-                        items.push({ text: match[i], range: { from: start, count: length } });
+                        const [from, to] = match.indices[i];
+                        items.push({ text: match[i], range: { from, count: to - from } });
                     }
                     const r = fn(items, { index, patternIndex: chosen.id });
                     ++index;
@@ -1604,105 +1610,288 @@
                 return result;
             }
         }
+        function parseReplacement(replacement, match) {
+            const parts = [];
+            const $re = /\$([$&`']|\d{1,2}|<[^>]+>)/g;
+            let lastIndex = 0;
+            let m = null;
+            while ((m = $re.exec(replacement)) !== null) {
+                if (m.index > lastIndex) {
+                    parts.push({ type: "text", value: replacement.slice(lastIndex, m.index) });
+                }
+                const ref = m[1];
+                if (ref === "$") {
+                    parts.push({ type: "text", value: "$" });
+                }
+                else if (ref === "&") {
+                    parts.push({ type: "group", index: 0 });
+                }
+                else if (ref === "`") {
+                    parts.push({ type: "text", value: match.input.slice(0, match.index) });
+                }
+                else if (ref === "'") {
+                    const postIndex = match.index + match[0].length;
+                    parts.push({ type: "text", value: match.input.slice(postIndex) });
+                }
+                else if (ref.startsWith("<")) {
+                    const name = ref.slice(1, -1);
+                    parts.push({ type: "group", index: name });
+                }
+                else if (/\d+/.test(ref)) {
+                    const num = parseInt(ref, 10);
+                    parts.push({ type: "group", index: num });
+                }
+                lastIndex = $re.lastIndex;
+            }
+            if (lastIndex < replacement.length) {
+                parts.push({ type: "text", value: replacement.slice(lastIndex) });
+            }
+            return parts;
+        }
+        function getGroupOffsets(match) {
+            const fullMatch = match[0];
+            const offsets = [];
+            offsets[0] = { start: 0, end: fullMatch.length };
+            let currentPos = 0;
+            for (let i = 1; i < match.length; i++) {
+                const groupText = match[i];
+                if (groupText === undefined) {
+                    offsets[i] = { start: -1, end: -1 };
+                    continue;
+                }
+                const start = fullMatch.indexOf(groupText, currentPos);
+                if (start !== -1) {
+                    offsets[i] = { start, end: start + groupText.length };
+                    currentPos = start;
+                }
+                else {
+                    offsets[i] = { start: -1, end: -1 };
+                }
+            }
+            return offsets;
+        }
+        function applyReplace(input, pattern, replacement) {
+            const ops = [];
+            let currentOutputPos = 0;
+            let lastMatchEnd = 0;
+            const finalFlags = ensureFlags(pattern.flags, ["g", "d"]);
+            const re = new RegExp(pattern.source, finalFlags);
+            let match = null;
+            while ((match = re.exec(input)) !== null) {
+                const matchStart = match.index;
+                const matchEnd = matchStart + match[0].length;
+                if (matchStart > lastMatchEnd) {
+                    const len = matchStart - lastMatchEnd;
+                    ops.push({ type: "move", range: { from: lastMatchEnd, count: len }, to: currentOutputPos });
+                    currentOutputPos += len;
+                }
+                const parts = parseReplacement(replacement, match);
+                const groupOffsets = getGroupOffsets(match);
+                const usedGroups = new Set();
+                for (const part of parts) {
+                    if (part.type === "text") {
+                        ops.push({ type: "insert", at: currentOutputPos, text: part.value });
+                        currentOutputPos += part.value.length;
+                    }
+                    else {
+                        const idx = part.index;
+                        const offset = groupOffsets[idx];
+                        const groupText = (typeof idx === "number" ? match[idx] : match.groups?.[idx]) || "";
+                        if (offset) {
+                            ops.push({
+                                type: "move",
+                                range: { from: matchStart + offset.start, count: groupText.length },
+                                to: currentOutputPos
+                            });
+                            usedGroups.add(idx);
+                            currentOutputPos += groupText.length;
+                        }
+                    }
+                }
+                lastMatchEnd = matchEnd;
+                if (match[0].length === 0)
+                    re.lastIndex++;
+            }
+            if (lastMatchEnd < input.length) {
+                const len = input.length - lastMatchEnd;
+                ops.push({ type: "move", range: { from: lastMatchEnd, count: len }, to: currentOutputPos });
+            }
+            return { output: applyTransformOp(input, ops), ops };
+        }
+        function applyTransformOp(input, ops) {
+            const components = [];
+            for (const op of ops) {
+                if (op.type === "insert") {
+                    components.push({ at: op.at, text: op.text });
+                }
+                else if (op.type === "move") {
+                    const text = input.slice(op.range.from, op.range.from + op.range.count);
+                    components.push({ at: op.to, text: text });
+                }
+            }
+            components.sort((a, b) => a.at - b.at);
+            return components.map(c => c.text).join("");
+        }
+        function updateRanges(ranges, ops) {
+            const newRanges = [];
+            const moveOps = ops.filter((op) => op.type === "move");
+            for (const range of ranges) {
+                const rangeStart = range.from;
+                const rangeEnd = range.from + range.count;
+                const fragments = [];
+                for (const move of moveOps) {
+                    const moveSrcStart = move.range.from;
+                    const moveSrcEnd = move.range.from + move.range.count;
+                    const intersectStart = Math.max(rangeStart, moveSrcStart);
+                    const intersectEnd = Math.min(rangeEnd, moveSrcEnd);
+                    if (intersectStart < intersectEnd) {
+                        fragments.push({
+                            ...range,
+                            from: move.to + (intersectStart - moveSrcStart),
+                            count: intersectEnd - intersectStart
+                        });
+                    }
+                }
+                if (fragments.length > 0) {
+                    fragments.sort((a, b) => a.from - b.from);
+                    let merged = { ...fragments[0] };
+                    for (let i = 1; i < fragments.length; i++) {
+                        const next = fragments[i];
+                        if (merged.from + merged.count === next.from) {
+                            merged.count += next.count;
+                        }
+                        else {
+                            newRanges.push(merged);
+                            merged = { ...next };
+                        }
+                    }
+                    newRanges.push(merged);
+                }
+            }
+            return newRanges;
+        }
         class TextStyleContext {
             globalStyle;
-            builders = [];
+            items = [];
             constructor(globalStyle = {}) {
                 this.globalStyle = globalStyle;
             }
             transforms = [];
             transform(fn) {
+                if (this.items.length)
+                    throw new Error(`transform() must be called before calling by...() or forEach...()`);
                 this.transforms.push(fn);
                 return this;
             }
+            replace(pattern, replacement) {
+                if (!(pattern instanceof RegExp)) {
+                    throw new Error(`pattern must be RegExp: ${pattern}`);
+                }
+                if (this.items.length) {
+                    this.items[this.items.length - 1].replaces.push({ pattern, replacement });
+                }
+                else {
+                    this.transforms.push(text => applyReplace(text, pattern, replacement).output);
+                }
+                return this;
+            }
             rule(rule, style) {
-                const builder = this.builders[this.builders.length - 1];
+                const builder = this.items[this.items.length - 1].builder;
                 if (builder instanceof TextStyleBuilder) {
                     builder.rule(rule, style);
                 }
                 return this;
             }
+            addBuilder(builder) {
+                this.items.push({ builder, replaces: [] });
+            }
             byCharClass(options) {
-                this.builders.push(new CharClassTextStyleBuilder(options));
+                this.addBuilder(new CharClassTextStyleBuilder(options));
                 return this;
             }
             byRegExp() {
-                this.builders.push(new RegExpTextStyleBuilder());
+                this.addBuilder(new RegExpTextStyleBuilder());
                 return this;
             }
             bySearch(options) {
-                this.builders.push(new SearchTextStyleBuilder(options));
+                this.addBuilder(new SearchTextStyleBuilder(options));
                 return this;
             }
             byPosition(options) {
-                this.builders.push(new PositionTextStyleBuilder(options));
+                this.addBuilder(new PositionTextStyleBuilder(options));
                 return this;
             }
             byLine() {
-                this.builders.push(new LineTextStyleBuilder());
+                this.addBuilder(new LineTextStyleBuilder());
                 return this;
             }
             bySurrounding(open, close, options) {
-                this.builders.push(new SurroundingTextStyleBuilder(open, close, options));
+                this.addBuilder(new SurroundingTextStyleBuilder(open, close, options));
                 return this;
             }
             byGrapheme() {
-                this.builders.push(new GraphemeTextStyleBuilder());
+                this.addBuilder(new GraphemeTextStyleBuilder());
                 return this;
             }
             byWord(locale) {
-                this.builders.push(new WordTextStyleBuilder(locale));
+                this.addBuilder(new WordTextStyleBuilder(locale));
                 return this;
             }
             bySentence(locale) {
-                this.builders.push(new SentenceTextStyleBuilder(locale));
+                this.addBuilder(new SentenceTextStyleBuilder(locale));
                 return this;
             }
             forEachLine(fn) {
-                this.builders.push(new ForEachLine(fn));
+                this.addBuilder(new ForEachLine(fn));
                 return this;
             }
             forEachGrapheme(fn, options) {
-                this.builders.push(new ForEachGrapheme(fn, options));
+                this.addBuilder(new ForEachGrapheme(fn, options));
                 return this;
             }
             forEachWord(fn, options) {
-                this.builders.push(new ForEachWord(fn, options));
+                this.addBuilder(new ForEachWord(fn, options));
                 return this;
             }
             forEachSentence(fn, options) {
-                this.builders.push(new ForEachSentence(fn, options));
+                this.addBuilder(new ForEachSentence(fn, options));
                 return this;
             }
             forEachRegExp(re, fn) {
-                this.builders.push(new ForEachRegExp(re, fn));
+                this.addBuilder(new ForEachRegExp(re, fn));
                 return this;
             }
             forEachSurrounding(open, close, fn) {
-                this.builders.push(new ForEachSurrounding(open, close, fn));
+                this.addBuilder(new ForEachSurrounding(open, close, fn));
                 return this;
             }
             apply(property = thisLayer.text.sourceText, style = property.style) {
                 // transform
                 const original = property.value;
-                const text = this.transforms.reduce((acc, fn) => fn(acc, { original }), original);
-                if (this.transforms.length && text !== original) {
-                    style = replaceText(style, text);
+                let text = this.transforms.reduce((acc, fn) => fn(acc, { original }), original);
+                // resolve
+                let ranges = [];
+                for (const { builder, replaces } of this.items) {
+                    ranges.push(...builder.resolve(text));
+                    for (const { pattern, replacement } of replaces) {
+                        const { output, ops } = applyReplace(text, pattern, replacement);
+                        text = output;
+                        ranges = updateRanges(ranges, ops);
+                    }
                 }
+                ranges = normalizeRanges(ranges);
                 // global
                 for (const field in this.globalStyle) {
                     style = applyTextStyleAll(text, style, field, this.globalStyle[field]);
                 }
+                if (text !== original) {
+                    style = replaceText(style, text);
+                }
                 // local
-                for (const { from, count, style: st } of normalizeRanges(this.resolve(text))) {
+                for (const { from, count, style: st } of ranges) {
                     style = applyStyle(style, st, from, count);
                 }
                 return style;
-            }
-            resolve(text) {
-                let result = [];
-                this.builders.forEach(builder => result.push(...builder.resolve(text)));
-                return result;
             }
         }
         const lib = {
@@ -1713,7 +1902,7 @@
                 annotateByCharClass: annotateByCharClassExclusive
             },
         };
-        LIB.text = lib;
+        LIB.Text = lib;
         return lib;
     },
 })

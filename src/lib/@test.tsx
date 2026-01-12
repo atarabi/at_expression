@@ -1,7 +1,7 @@
 ({
-    load(): Atarabi.test.Lib {
+    load(): Atarabi.Test.Lib {
 
-        type NumericTree = Atarabi.test.NumericTree;
+        type NumericTree = Atarabi.Test.NumericTree;
 
         function assertNoCycle(
             value: any,
@@ -81,7 +81,7 @@
             return false;
         }
 
-        const Assert: Atarabi.test.Assert = {
+        const Assert: Atarabi.Test.Assert = {
             equal(a, b, msg) {
                 if (a !== b) {
                     throw new Error(msg || `Expected ${a} === ${b}`);
@@ -116,7 +116,7 @@
             }
         };
 
-        const Test: Atarabi.test.Test = (() => {
+        const Test: Atarabi.Test.Test = (() => {
 
             type TestCase = {
                 name: string;
@@ -186,7 +186,7 @@
         const lib = {
             Assert,
             Test,
-        } satisfies Atarabi.test.Lib;
+        } satisfies Atarabi.Test.Lib;
 
         return lib;
 

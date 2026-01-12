@@ -1,18 +1,18 @@
 interface Global {
     footage(name: "@test.jsx"): Footage<{
-        load(): Atarabi.test.Lib;
+        load(): Atarabi.Test.Lib;
     }>;
 }
 
 interface Layer {
     footage(name: "@test.jsx"): Footage<{
-        load(): Atarabi.test.Lib;
+        load(): Atarabi.Test.Lib;
     }>;
 }
 
 declare namespace Atarabi {
 
-    namespace test {
+    namespace Test {
 
         interface Lib {
             Assert: Assert;

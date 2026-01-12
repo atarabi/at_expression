@@ -1,18 +1,26 @@
 interface Global {
     footage(name: "@text.jsx"): Footage<{
-        load(force?: boolean): Atarabi.text.Lib;
+        load(force?: boolean): Atarabi.Text.Lib;
     }>;
 }
 
 interface Layer {
     footage(name: "@text.jsx"): Footage<{
-        load(force?: boolean): Atarabi.text.Lib;
+        load(force?: boolean): Atarabi.Text.Lib;
     }>;
 }
 
 declare namespace Atarabi {
 
-    namespace text {
+    namespace Expression {
+
+        interface Cache {
+            Text: Atarabi.Text.Lib;
+        }
+
+    }
+
+    namespace Text {
 
         interface Lib {
             CharClass: CharClassMap;
@@ -144,11 +152,7 @@ declare namespace Atarabi {
             apply(property?: TextProperty, style?: TextStyleProperty): TextStyleProperty;
         }
 
-        interface TextStyleResolver {
-            resolve(text: string): RangeWithStyle[];
-        }
-
-        interface TextStyleBuilder<Rule> extends TextStyleResolver {
+        interface TextStyleBuilder<Rule> {
             rule(rule: Rule, style: TextStyleOptions): this;
         }
 
@@ -338,6 +342,8 @@ declare namespace Atarabi {
             forEachSentence(fn: ForEachSentenceFunc, options?: ForEachSentenceOptions): TextStyleContext;
             forEachRegExp(re: RegExp | RegExp[], fn: ForEachRegExpFunc): TextStyleContext;
             forEachSurrounding(open: string, close: string, fn: ForEachSurroundingFunc): TextStyleContext;
+            // replace
+            replace(pattern: RegExp, replacement: string): TextStyleContext;
         };
 
         type TextStyleContext<Builder extends object = {}> = Builder & TextStyleApplier & TextStyleFacade;

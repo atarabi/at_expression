@@ -1,6 +1,6 @@
 ({
     load(force = false) {
-        const LIB = $.__lib = $.__lib || {};
+        const LIB = $.__Atarabi = $.__Atarabi || {};
         if (!force && LIB.IK) {
             return LIB.IK;
         }

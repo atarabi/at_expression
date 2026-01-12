@@ -1,16 +1,16 @@
 ({
-    load(force: boolean = false): Atarabi.text.Lib {
+    load(force: boolean = false): Atarabi.Text.Lib {
 
-        const LIB = $.__lib = $.__lib || {};
-        if (!force && LIB.text) {
-            return LIB.text;
+        const LIB = $.__Atarabi = $.__Atarabi || {} as _HelperObject["__Atarabi"];
+        if (!force && LIB.Text) {
+            return LIB.Text;
         }
 
         const DEFAULT_LOCALE = Intl.DateTimeFormat().resolvedOptions().locale;
 
-        type CharClassKey = Atarabi.text.CharClassKey;
+        type CharClassKey = Atarabi.Text.CharClassKey;
 
-        class CharClass implements Atarabi.text.CharClass {
+        class CharClass implements Atarabi.Text.CharClass {
             private _re: RegExp;
             constructor(private _name: string, re: RegExp) {
                 this._re = Object.freeze(new RegExp(re.source, re.flags));
@@ -18,7 +18,7 @@
             get name() { return this._name; }
             get re() { return this._re; }
             test(g: string) { return this._re.test(g); }
-            static isCharClass(v: any): v is Atarabi.text.CharClass {
+            static isCharClass(v: any): v is Atarabi.Text.CharClass {
                 return v instanceof CharClass;
             }
         }
@@ -79,8 +79,18 @@
             return Object.freeze(registry) as Record<CharClassKey, CharClass>;
         })();
 
-        type CharMatcher = Atarabi.text.CharMatcher;
-        type CharMatchers = Atarabi.text.CharMatchers;
+        function ensureFlags(currentFlags: string, flagsToAdd: string[]): string {
+            let newFlags = currentFlags;
+            for (const f of flagsToAdd) {
+                if (!newFlags.includes(f)) {
+                    newFlags += f;
+                }
+            }
+            return newFlags;
+        }
+
+        type CharMatcher = Atarabi.Text.CharMatcher;
+        type CharMatchers = Atarabi.Text.CharMatchers;
 
         function createMatcher(matchers?: CharMatchers): (g: string) => boolean {
             if (!matchers) return () => false;
@@ -116,8 +126,8 @@
             return sentenceSegmenterCache.get(locale)!;
         }
 
-        type Range = Atarabi.text.Range;
-        type RangeWithStyle = Atarabi.text.RangeWithStyle;
+        type Range = Atarabi.Text.Range;
+        type RangeWithStyle = Atarabi.Text.RangeWithStyle;
         type RangeWithIndex = Range & { index: number; };
 
         function mergeRanges(ranges: Range[]): Range[] {
@@ -143,10 +153,10 @@
             return result;
         }
 
-        type TextLayout = Atarabi.text.TextLayout;
-        type TextLayoutOptions = Atarabi.text.TextLayoutOptions;
-        type TextStyle = Atarabi.text.TextStyle;
-        type TextStyleOptions = Atarabi.text.TextStyleOptions;
+        type TextLayout = Atarabi.Text.TextLayout;
+        type TextLayoutOptions = Atarabi.Text.TextLayoutOptions;
+        type TextStyle = Atarabi.Text.TextStyle;
+        type TextStyleOptions = Atarabi.Text.TextStyleOptions;
 
         function replaceText(style: TextStyleProperty, text: string) {
             return style.replaceText(text);
@@ -238,37 +248,34 @@
             return style;
         }
 
-        function shallowEqual(a: any, b: any): boolean {
+        function styleEqual(a: any, b: any): boolean {
             if (a === b) return true;
 
-            if (typeof a !== "object" || typeof b !== "object" || a === null || b === null) {
+            if (typeof a !== "object" || a === null || typeof b !== "object" || b === null) {
                 return false;
             }
 
-            const ka = Object.keys(a);
-            const kb = Object.keys(b);
+            const keysA = Object.keys(a);
+            const keysB = Object.keys(b);
 
-            if (ka.length !== kb.length) return false;
+            if (keysA.length !== keysB.length) return false;
 
-            for (const k of ka) {
-                if (!(k in b)) return false;
+            for (let i = 0; i < keysA.length; i++) {
+                const key = keysA[i];
 
-                const va = a[k];
-                const vb = b[k];
+                if (!Object.prototype.hasOwnProperty.call(b, key)) return false;
 
-                if (Array.isArray(va) && Array.isArray(vb)) {
-                    if (va.length !== vb.length) return false;
-                    for (let i = 0; i < va.length; i++) {
-                        if (va[i] !== vb[i]) return false;
+                const valA = a[key];
+                const valB = b[key];
+
+                if (Array.isArray(valA) && Array.isArray(valB)) {
+                    if (valA.length !== valB.length) return false;
+                    for (let j = 0; j < valA.length; j++) {
+                        if (valA[j] !== valB[j]) return false;
                     }
-                    continue;
-                }
-
-                if (Array.isArray(va) || Array.isArray(vb)) {
+                } else if (valA !== valB) {
                     return false;
                 }
-
-                if (va !== vb) return false;
             }
 
             return true;
@@ -325,7 +332,7 @@
                     }
 
                     const last = result[result.length - 1];
-                    if (last && last.from + last.count === lastPos && shallowEqual(last.style, style)) {
+                    if (last && last.from + last.count === lastPos && styleEqual(last.style, style)) {
                         last.count += e.pos - lastPos;
                     } else {
                         result.push({
@@ -355,7 +362,7 @@
             return result;
         }
 
-        abstract class TextStyleBuilder<Rule> implements Atarabi.text.TextStyleBuilder<Rule> {
+        abstract class TextStyleBuilder<Rule> implements Atarabi.Text.TextStyleBuilder<Rule> {
             protected items: { rule: Rule; style: TextStyleOptions }[] = [];
             rule(rule: Rule, style: TextStyleOptions): this {
                 this.items.push({ rule, style });
@@ -364,8 +371,8 @@
             abstract resolve(text: string): RangeWithStyle[];
         }
 
-        type CharClassRule = Atarabi.text.CharClassRule;
-        type CharClassOptions = Atarabi.text.CharClassOptions;
+        type CharClassRule = Atarabi.Text.CharClassRule;
+        type CharClassOptions = Atarabi.Text.CharClassOptions;
 
         function toRegExp(m: CharMatcher): RegExp | RegExp[] {
             if (typeof m === "string") {
@@ -389,7 +396,7 @@
             const ranges: Range[] = [];
 
             for (const re0 of res) {
-                const flags = re0.flags.includes("g") ? re0.flags : re0.flags + "g";
+                const flags = ensureFlags(re0.flags, ["g"]);
                 const re = new RegExp(re0.source, flags);
 
                 let m: RegExpExecArray | null;
@@ -463,7 +470,7 @@
             return ranges;
         }
 
-        class CharClassTextStyleBuilder extends TextStyleBuilder<CharClassRule> implements Atarabi.text.CharClassTextStyleBuilder {
+        class CharClassTextStyleBuilder extends TextStyleBuilder<CharClassRule> implements Atarabi.Text.CharClassTextStyleBuilder {
             protected options: CharClassOptions;
             constructor(options?: CharClassOptions) {
                 super();
@@ -496,7 +503,7 @@
             const ranges: Range[] = [];
 
             for (const re of regexList) {
-                const regex = new RegExp(re.source, re.flags.includes("g") ? re.flags : re.flags + "g");
+                const regex = new RegExp(re.source, ensureFlags(re.flags, ["g"]));
 
                 let match: RegExpExecArray | null;
                 while ((match = regex.exec(text)) !== null) {
@@ -521,9 +528,9 @@
             return mergeRanges(ranges);
         }
 
-        type RegExpRule = Atarabi.text.RegExpRule;
+        type RegExpRule = Atarabi.Text.RegExpRule;
 
-        class RegExpTextStyleBuilder extends TextStyleBuilder<RegExpRule> implements Atarabi.text.RegExpTextStyleBuilder {
+        class RegExpTextStyleBuilder extends TextStyleBuilder<RegExpRule> implements Atarabi.Text.RegExpTextStyleBuilder {
             resolve(text: string): RangeWithStyle[] {
                 let result: RangeWithStyle[] = [];
                 for (const { rule, style } of this.items) {
@@ -536,8 +543,8 @@
             }
         }
 
-        type SearchRule = Atarabi.text.SearchRule;
-        type SearchOptions = Atarabi.text.SearchOptions;
+        type SearchRule = Atarabi.Text.SearchRule;
+        type SearchOptions = Atarabi.Text.SearchOptions;
 
         function createSearchRegExp(source: string | string[], options: SearchOptions): RegExp {
             const { caseSensitive } = options;
@@ -547,7 +554,7 @@
             return new RegExp(pattern, flags);
         }
 
-        class SearchTextStyleBuilder extends TextStyleBuilder<SearchRule> implements Atarabi.text.SearchTextStyleBuilder {
+        class SearchTextStyleBuilder extends TextStyleBuilder<SearchRule> implements Atarabi.Text.SearchTextStyleBuilder {
             protected options: SearchOptions;
             constructor(options?: SearchOptions) {
                 super();
@@ -565,10 +572,10 @@
             }
         }
 
-        type PositionRuleItem = Atarabi.text.PositionRuleItem;
-        type PositionRule = Atarabi.text.PositionRule;
-        type PositionOptions = Atarabi.text.PositionOptions;
-        type SkipWhen = Atarabi.text.SkipWhen;
+        type PositionRuleItem = Atarabi.Text.PositionRuleItem;
+        type PositionRule = Atarabi.Text.PositionRule;
+        type PositionOptions = Atarabi.Text.PositionOptions;
+        type SkipWhen = Atarabi.Text.SkipWhen;
 
         function convertGraphemeRangesForText(text: string, rules: PositionRule[], skipWhen: SkipWhen, line: number = 0): Range[][] {
             const graphemes = [...graphemeSegmenter.segment(text)];
@@ -656,7 +663,7 @@
             return result;
         }
 
-        class PositionTextStyleBuilder extends TextStyleBuilder<PositionRule> implements Atarabi.text.PositionTextStyleBuilder {
+        class PositionTextStyleBuilder extends TextStyleBuilder<PositionRule> implements Atarabi.Text.PositionTextStyleBuilder {
             protected options: PositionOptions;
             constructor(options?: PositionOptions) {
                 super();
@@ -676,8 +683,8 @@
             }
         }
 
-        type RangeRule = Atarabi.text.RangeRule;
-        type LineRule = Atarabi.text.LineRule;
+        type RangeRule = Atarabi.Text.RangeRule;
+        type LineRule = Atarabi.Text.LineRule;
 
         function annotateByLine(text: string): Range[] {
             const ranges: Range[] = [];
@@ -725,7 +732,7 @@
             return mergeRanges(result);
         }
 
-        class LineTextStyleBuilder extends TextStyleBuilder<LineRule> implements Atarabi.text.LineTextStyleBuilder {
+        class LineTextStyleBuilder extends TextStyleBuilder<LineRule> implements Atarabi.Text.LineTextStyleBuilder {
             resolve(text: string): RangeWithStyle[] {
                 let result: RangeWithStyle[] = [];
                 const lines = annotateByLine(text);
@@ -746,9 +753,9 @@
             }
         }
 
-        type SurroundingTarget = Atarabi.text.SurroundingTarget;
-        type SurroundingOptions = Atarabi.text.SurroundingOptions;
-        type SurroundingRule = Atarabi.text.SurroundingRule;
+        type SurroundingTarget = Atarabi.Text.SurroundingTarget;
+        type SurroundingOptions = Atarabi.Text.SurroundingOptions;
+        type SurroundingRule = Atarabi.Text.SurroundingRule;
 
         type RangeWithDepth = { from: number; count: number; depth: number; maxDepth: number };
 
@@ -892,7 +899,7 @@
             };
         }
 
-        class SurroundingTextStyleBuilder extends TextStyleBuilder<SurroundingRule> implements Atarabi.text.SurroundingTextStyleBuilder {
+        class SurroundingTextStyleBuilder extends TextStyleBuilder<SurroundingRule> implements Atarabi.Text.SurroundingTextStyleBuilder {
             protected options: SurroundingOptions;
             constructor(protected open: string, protected close: string, options?: SurroundingOptions) {
                 super();
@@ -917,11 +924,11 @@
 
         type Mutable<T> = { -readonly [K in keyof T]: T[K]; };
 
-        type GraphemeRule = Atarabi.text.GraphemeRule;
-        type GraphemeMatcher = Atarabi.text.GraphemeMatcher;
-        type GraphemeStateFn = Atarabi.text.GraphemeStateFn;
+        type GraphemeRule = Atarabi.Text.GraphemeRule;
+        type GraphemeMatcher = Atarabi.Text.GraphemeMatcher;
+        type GraphemeStateFn = Atarabi.Text.GraphemeStateFn;
         type GraphemeRuleItem = { match: GraphemeMatcher; initState: GraphemeStateFn; };
-        type GraphemeContext = Atarabi.text.GraphemeContext;
+        type GraphemeContext = Atarabi.Text.GraphemeContext;
 
         function isLineBreak(g: string): boolean {
             return g === "\n" || g === "\r" || g === "\r\n";
@@ -1129,7 +1136,7 @@
             return results.map(mergeRanges);
         }
 
-        class GraphemeTextStyleBuilder extends TextStyleBuilder<GraphemeRule> implements Atarabi.text.GraphemeTextStyleBuilder {
+        class GraphemeTextStyleBuilder extends TextStyleBuilder<GraphemeRule> implements Atarabi.Text.GraphemeTextStyleBuilder {
             resolve(text: string): RangeWithStyle[] {
                 let result: RangeWithStyle[] = [];
                 const rules: GraphemeRuleItem[] = this.items.map(item => item.rule).map(rule => typeof rule === "function" ? { match: rule, initState: () => ({}) } : rule);
@@ -1145,8 +1152,8 @@
             }
         }
 
-        type WordRule = Atarabi.text.WordRule;
-        type WordContext = Atarabi.text.WordContext;
+        type WordRule = Atarabi.Text.WordRule;
+        type WordContext = Atarabi.Text.WordContext;
 
         function segmentTextByWord(text: string, locale: string): { words: Intl.SegmentData[]; lines: LineInfo[]; } {
             const segmenter = getWordSegmenter(locale);
@@ -1257,7 +1264,7 @@
             return results.map(mergeRanges);
         }
 
-        class WordTextStyleBuilder extends TextStyleBuilder<WordRule> implements Atarabi.text.WordTextStyleBuilder {
+        class WordTextStyleBuilder extends TextStyleBuilder<WordRule> implements Atarabi.Text.WordTextStyleBuilder {
             constructor(private locale: string) {
                 super();
             }
@@ -1275,8 +1282,8 @@
             }
         }
 
-        type SentenceRule = Atarabi.text.SentenceRule;
-        type SentenceContext = Atarabi.text.SentenceContext;
+        type SentenceRule = Atarabi.Text.SentenceRule;
+        type SentenceContext = Atarabi.Text.SentenceContext;
 
         function containsLineBreak(text: string): boolean {
             return /\r\n|\r|\n/.test(text);
@@ -1371,7 +1378,7 @@
             return results.map(mergeRanges);
         }
 
-        class SentenceTextStyleBuilder extends TextStyleBuilder<SentenceRule> implements Atarabi.text.SentenceTextStyleBuilder {
+        class SentenceTextStyleBuilder extends TextStyleBuilder<SentenceRule> implements Atarabi.Text.SentenceTextStyleBuilder {
             constructor(private locale: string) {
                 super();
             }
@@ -1389,11 +1396,11 @@
             }
         }
 
-        abstract class TextStyleResolver implements Atarabi.text.TextStyleResolver {
+        abstract class TextStyleResolver {
             abstract resolve(text: string): RangeWithStyle[];
         }
 
-        type ForEachLineFunc = Atarabi.text.ForEachLineFunc;
+        type ForEachLineFunc = Atarabi.Text.ForEachLineFunc;
 
         class ForEachLine extends TextStyleResolver {
             constructor(public fn: ForEachLineFunc) {
@@ -1414,8 +1421,8 @@
             }
         }
 
-        type ForEachGraphemeFunc = Atarabi.text.ForEachGraphemeFunc;
-        type ForEachGraphemeOptions = Atarabi.text.ForEachGraphemeOptions;
+        type ForEachGraphemeFunc = Atarabi.Text.ForEachGraphemeFunc;
+        type ForEachGraphemeOptions = Atarabi.Text.ForEachGraphemeOptions;
 
         class ForEachGrapheme extends TextStyleResolver {
             protected options: ForEachGraphemeOptions;
@@ -1576,8 +1583,8 @@
             }
         }
 
-        type ForEachWordFunc = Atarabi.text.ForEachWordFunc;
-        type ForEachWordOptions = Atarabi.text.ForEachWordOptions;
+        type ForEachWordFunc = Atarabi.Text.ForEachWordFunc;
+        type ForEachWordOptions = Atarabi.Text.ForEachWordOptions;
 
         class ForEachWord extends TextStyleResolver {
             protected options: ForEachWordOptions;
@@ -1639,8 +1646,8 @@
             }
         }
 
-        type ForEachSentenceFunc = Atarabi.text.ForEachSentenceFunc;
-        type ForEachSentenceOptions = Atarabi.text.ForEachSentenceOptions;
+        type ForEachSentenceFunc = Atarabi.Text.ForEachSentenceFunc;
+        type ForEachSentenceOptions = Atarabi.Text.ForEachSentenceOptions;
 
         class ForEachSentence extends TextStyleResolver {
             protected options: ForEachSentenceOptions;
@@ -1697,8 +1704,8 @@
             }
         }
 
-        type ForEachRegExpFunc = Atarabi.text.ForEachRegExpFunc;
-        type ForEachRegExpItem = Atarabi.text.ForEachRegExpItem;
+        type ForEachRegExpFunc = Atarabi.Text.ForEachRegExpFunc;
+        type ForEachRegExpItem = Atarabi.Text.ForEachRegExpItem;
 
         class ForEachRegExp extends TextStyleResolver {
             constructor(public re: RegExp | RegExp[], public fn: ForEachRegExpFunc) {
@@ -1710,7 +1717,7 @@
                 const patterns = Array.isArray(this.re) ? this.re : [this.re];
                 const regexes = patterns.map((r, i) => ({
                     id: i,
-                    re: new RegExp(r.source, r.flags.includes("g") ? r.flags : r.flags + "g"),
+                    re: new RegExp(r.source, ensureFlags(r.flags, ["g", "d"])),
                     match: null as RegExpExecArray | null,
                 }));
 
@@ -1759,9 +1766,9 @@
                             items.push(null);
                             continue;
                         }
-                        const start = match[0].indexOf(match[i]);
-                        const length = match[i].length;
-                        items.push({ text: match[i], range: { from: start, count: length } });
+
+                        const [from, to] = match.indices[i];
+                        items.push({ text: match[i], range: { from, count: to - from } });
                     }
                     const r = fn(items, { index, patternIndex: chosen.id });
                     ++index;
@@ -1781,7 +1788,7 @@
             }
         }
 
-        type ForEachSurroundingFunc = Atarabi.text.ForEachSurroundingFunc;
+        type ForEachSurroundingFunc = Atarabi.Text.ForEachSurroundingFunc;
 
         class ForEachSurrounding extends TextStyleResolver {
             constructor(public open: string, public close: string, public fn: ForEachSurroundingFunc) {
@@ -1804,105 +1811,312 @@
             }
         }
 
-        type TextTransformContext = Atarabi.text.TextTransformContext;
+        // replace
+        type TransformOp = { type: "insert"; at: number; text: string } | { type: "move"; range: Range; to: number };
 
-        class TextStyleContext implements TextStyleResolver, Atarabi.text.TextStyleFacade, Atarabi.text.TextTransformer {
-            protected builders: (TextStyleBuilder<any> | TextStyleResolver)[] = [];
+        type ReplacementPart = { type: "text"; value: string } | { type: "group"; index: number | string };
+
+        function parseReplacement(replacement: string, match: RegExpExecArray): ReplacementPart[] {
+            const parts: ReplacementPart[] = [];
+            const $re = /\$([$&`']|\d{1,2}|<[^>]+>)/g;
+            let lastIndex = 0;
+            let m: RegExpExecArray | null = null;
+
+            while ((m = $re.exec(replacement)) !== null) {
+                if (m.index > lastIndex) {
+                    parts.push({ type: "text", value: replacement.slice(lastIndex, m.index) });
+                }
+
+                const ref = m[1];
+                if (ref === "$") {
+                    parts.push({ type: "text", value: "$" });
+                } else if (ref === "&") {
+                    parts.push({ type: "group", index: 0 });
+                } else if (ref === "`") {
+                    parts.push({ type: "text", value: match.input.slice(0, match.index) });
+                } else if (ref === "'") {
+                    const postIndex = match.index + match[0].length;
+                    parts.push({ type: "text", value: match.input.slice(postIndex) });
+                } else if (ref.startsWith("<")) {
+                    const name = ref.slice(1, -1);
+                    parts.push({ type: "group", index: name });
+                } else if (/\d+/.test(ref)) {
+                    const num = parseInt(ref, 10);
+                    parts.push({ type: "group", index: num });
+                }
+
+                lastIndex = $re.lastIndex;
+            }
+
+            if (lastIndex < replacement.length) {
+                parts.push({ type: "text", value: replacement.slice(lastIndex) });
+            }
+
+            return parts;
+        }
+
+        function getGroupOffsets(match: RegExpExecArray): { start: number; end: number }[] {
+            const fullMatch = match[0];
+            const offsets: { start: number; end: number }[] = [];
+
+            offsets[0] = { start: 0, end: fullMatch.length };
+
+            let currentPos = 0;
+            for (let i = 1; i < match.length; i++) {
+                const groupText = match[i];
+                if (groupText === undefined) {
+                    offsets[i] = { start: -1, end: -1 };
+                    continue;
+                }
+
+                const start = fullMatch.indexOf(groupText, currentPos);
+                if (start !== -1) {
+                    offsets[i] = { start, end: start + groupText.length };
+                    currentPos = start;
+                } else {
+                    offsets[i] = { start: -1, end: -1 };
+                }
+            }
+            return offsets;
+        }
+
+        function applyReplace(input: string, pattern: RegExp, replacement: string): { output: string; ops: TransformOp[] } {
+            const ops: TransformOp[] = [];
+            let currentOutputPos = 0;
+            let lastMatchEnd = 0;
+
+            const finalFlags = ensureFlags(pattern.flags, ["g", "d"]);
+            const re = new RegExp(pattern.source, finalFlags);
+
+            let match: RegExpExecArray | null = null;
+
+            while ((match = re.exec(input)) !== null) {
+                const matchStart = match.index;
+                const matchEnd = matchStart + match[0].length;
+
+                if (matchStart > lastMatchEnd) {
+                    const len = matchStart - lastMatchEnd;
+                    ops.push({ type: "move", range: { from: lastMatchEnd, count: len }, to: currentOutputPos });
+                    currentOutputPos += len;
+                }
+
+                const parts = parseReplacement(replacement, match);
+                const groupOffsets = getGroupOffsets(match);
+                const usedGroups = new Set<number | string>();
+
+                for (const part of parts) {
+                    if (part.type === "text") {
+                        ops.push({ type: "insert", at: currentOutputPos, text: part.value });
+                        currentOutputPos += part.value.length;
+                    } else {
+                        const idx = part.index;
+                        const offset = groupOffsets[idx];
+                        const groupText = (typeof idx === "number" ? match[idx] : match.groups?.[idx as string]) || "";
+
+                        if (offset) {
+                            ops.push({
+                                type: "move",
+                                range: { from: matchStart + offset.start, count: groupText.length },
+                                to: currentOutputPos
+                            });
+                            usedGroups.add(idx);
+                            currentOutputPos += groupText.length;
+                        }
+                    }
+                }
+
+                lastMatchEnd = matchEnd;
+                if (match[0].length === 0) re.lastIndex++;
+            }
+
+            if (lastMatchEnd < input.length) {
+                const len = input.length - lastMatchEnd;
+                ops.push({ type: "move", range: { from: lastMatchEnd, count: len }, to: currentOutputPos });
+            }
+
+            return { output: applyTransformOp(input, ops), ops };
+        }
+
+        function applyTransformOp(input: string, ops: TransformOp[]): string {
+            const components: { at: number; text: string }[] = [];
+            for (const op of ops) {
+                if (op.type === "insert") {
+                    components.push({ at: op.at, text: op.text });
+                } else if (op.type === "move") {
+                    const text = input.slice(op.range.from, op.range.from + op.range.count);
+                    components.push({ at: op.to, text: text });
+                }
+            }
+            components.sort((a, b) => a.at - b.at);
+            return components.map(c => c.text).join("");
+        }
+
+        function updateRanges(ranges: RangeWithStyle[], ops: TransformOp[]): RangeWithStyle[] {
+            const newRanges: RangeWithStyle[] = [];
+            const moveOps = ops.filter((op): op is Extract<TransformOp, { type: "move" }> => op.type === "move");
+
+            for (const range of ranges) {
+                const rangeStart = range.from;
+                const rangeEnd = range.from + range.count;
+
+                const fragments: RangeWithStyle[] = [];
+
+                for (const move of moveOps) {
+                    const moveSrcStart = move.range.from;
+                    const moveSrcEnd = move.range.from + move.range.count;
+
+                    const intersectStart = Math.max(rangeStart, moveSrcStart);
+                    const intersectEnd = Math.min(rangeEnd, moveSrcEnd);
+
+                    if (intersectStart < intersectEnd) {
+                        fragments.push({
+                            ...range,
+                            from: move.to + (intersectStart - moveSrcStart),
+                            count: intersectEnd - intersectStart
+                        });
+                    }
+                }
+
+                if (fragments.length > 0) {
+                    fragments.sort((a, b) => a.from - b.from);
+
+                    let merged = { ...fragments[0] };
+                    for (let i = 1; i < fragments.length; i++) {
+                        const next = fragments[i];
+                        if (merged.from + merged.count === next.from) {
+                            merged.count += next.count;
+                        } else {
+                            newRanges.push(merged);
+                            merged = { ...next };
+                        }
+                    }
+                    newRanges.push(merged);
+                }
+            }
+
+            return newRanges;
+        }
+
+        type TextTransformContext = Atarabi.Text.TextTransformContext;
+
+        class TextStyleContext implements Atarabi.Text.TextStyleFacade, Atarabi.Text.TextTransformer {
+            protected items: { builder: (TextStyleBuilder<any> | TextStyleResolver); replaces: { pattern: RegExp, replacement: string }[]; }[] = [];
             constructor(public globalStyle: TextLayoutOptions | TextStyleOptions = {}) {
             }
             protected transforms: ((text: string, ctx: TextTransformContext) => string)[] = [];
             transform(fn: (text: string, ctx: TextTransformContext) => string): this {
+                if (this.items.length) throw new Error(`transform() must be called before calling by...() or forEach...()`);
                 this.transforms.push(fn);
                 return this;
             }
+            replace(pattern: RegExp, replacement: string): this {
+                if (!(pattern instanceof RegExp)) {
+                    throw new Error(`pattern must be RegExp: ${pattern}`);
+                }
+                if (this.items.length) {
+                    this.items[this.items.length - 1].replaces.push({ pattern, replacement });
+                } else {
+                    this.transforms.push(text => applyReplace(text, pattern, replacement).output);
+                }
+                return this;
+            }
             rule<Rule>(rule: Rule, style: TextStyleOptions): this {
-                const builder = this.builders[this.builders.length - 1];
+                const builder = this.items[this.items.length - 1].builder;
                 if (builder instanceof TextStyleBuilder) {
                     builder.rule(rule, style);
                 }
                 return this;
             }
+            protected addBuilder(builder: TextStyleBuilder<any> | TextStyleResolver) {
+                this.items.push({ builder, replaces: [] });
+            }
             byCharClass(options?: CharClassOptions): this {
-                this.builders.push(new CharClassTextStyleBuilder(options));
+                this.addBuilder(new CharClassTextStyleBuilder(options));
                 return this;
             }
             byRegExp(): this {
-                this.builders.push(new RegExpTextStyleBuilder());
+                this.addBuilder(new RegExpTextStyleBuilder());
                 return this;
             }
             bySearch(options?: SearchOptions): this {
-                this.builders.push(new SearchTextStyleBuilder(options));
+                this.addBuilder(new SearchTextStyleBuilder(options));
                 return this;
             }
             byPosition(options?: PositionOptions): this {
-                this.builders.push(new PositionTextStyleBuilder(options));
+                this.addBuilder(new PositionTextStyleBuilder(options));
                 return this;
             }
             byLine(): this {
-                this.builders.push(new LineTextStyleBuilder());
+                this.addBuilder(new LineTextStyleBuilder());
                 return this;
             }
             bySurrounding(open: string, close: string, options?: SurroundingOptions): this {
-                this.builders.push(new SurroundingTextStyleBuilder(open, close, options));
+                this.addBuilder(new SurroundingTextStyleBuilder(open, close, options));
                 return this;
             }
             byGrapheme(): this {
-                this.builders.push(new GraphemeTextStyleBuilder());
+                this.addBuilder(new GraphemeTextStyleBuilder());
                 return this;
             }
             byWord(locale: string): this {
-                this.builders.push(new WordTextStyleBuilder(locale));
+                this.addBuilder(new WordTextStyleBuilder(locale));
                 return this;
             }
             bySentence(locale: string): this {
-                this.builders.push(new SentenceTextStyleBuilder(locale));
+                this.addBuilder(new SentenceTextStyleBuilder(locale));
                 return this;
             }
             forEachLine(fn: ForEachLineFunc): this {
-                this.builders.push(new ForEachLine(fn));
+                this.addBuilder(new ForEachLine(fn));
                 return this;
             }
             forEachGrapheme(fn: ForEachGraphemeFunc, options?: ForEachGraphemeOptions): this {
-                this.builders.push(new ForEachGrapheme(fn, options));
+                this.addBuilder(new ForEachGrapheme(fn, options));
                 return this;
             }
             forEachWord(fn: ForEachWordFunc, options?: ForEachWordOptions): this {
-                this.builders.push(new ForEachWord(fn, options));
+                this.addBuilder(new ForEachWord(fn, options));
                 return this;
             }
             forEachSentence(fn: ForEachSentenceFunc, options?: ForEachSentenceOptions): this {
-                this.builders.push(new ForEachSentence(fn, options));
+                this.addBuilder(new ForEachSentence(fn, options));
                 return this;
             }
             forEachRegExp(re: RegExp | RegExp[], fn: ForEachRegExpFunc): this {
-                this.builders.push(new ForEachRegExp(re, fn));
+                this.addBuilder(new ForEachRegExp(re, fn));
                 return this;
             }
             forEachSurrounding(open: string, close: string, fn: ForEachSurroundingFunc): this {
-                this.builders.push(new ForEachSurrounding(open, close, fn));
+                this.addBuilder(new ForEachSurrounding(open, close, fn));
                 return this;
             }
             apply(property: TextProperty = thisLayer.text.sourceText, style: TextStyleProperty = property.style): TextStyleProperty {
                 // transform
                 const original = property.value;
-                const text = this.transforms.reduce((acc, fn) => fn(acc, { original }), original);
-                if (this.transforms.length && text !== original) {
-                    style = replaceText(style, text);
+                let text = this.transforms.reduce((acc, fn) => fn(acc, { original }), original);
+                // resolve
+                let ranges: RangeWithStyle[] = [];
+                for (const { builder, replaces } of this.items) {
+                    ranges.push(...builder.resolve(text));
+                    for (const { pattern, replacement } of replaces) {
+                        const { output, ops } = applyReplace(text, pattern, replacement);
+                        text = output;
+                        ranges = updateRanges(ranges, ops);
+                    }
                 }
+                ranges = normalizeRanges(ranges);
                 // global
                 for (const field in this.globalStyle) {
                     style = applyTextStyleAll(text, style, field as keyof TextLayout | keyof TextStyle, this.globalStyle[field]);
                 }
+                if (text !== original) {
+                    style = replaceText(style, text);
+                }
                 // local
-                for (const { from, count, style: st } of normalizeRanges(this.resolve(text))) {
+                for (const { from, count, style: st } of ranges) {
                     style = applyStyle(style, st, from, count);
                 }
                 return style;
-            }
-            resolve(text: string): RangeWithStyle[] {
-                let result: RangeWithStyle[] = [];
-                this.builders.forEach(builder => result.push(...builder.resolve(text)))
-                return result;
             }
         }
 
@@ -1913,13 +2127,13 @@
             __internal: {
                 annotateByCharClass: annotateByCharClassExclusive
             },
-        } satisfies Atarabi.text.Lib & {
+        } satisfies Atarabi.Text.Lib & {
             __internal: {
                 annotateByCharClass: typeof annotateByCharClassExclusive,
             }
         };
 
-        LIB.text = lib;
+        LIB.Text = lib;
 
         return lib;
     },

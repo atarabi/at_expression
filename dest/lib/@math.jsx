@@ -1,8 +1,8 @@
 ({
     load(force = false) {
-        const LIB = $.__lib = $.__lib || {};
-        if (!force && LIB.math) {
-            return LIB.math;
+        const LIB = $.__Atarabi = $.__Atarabi || {};
+        if (!force && LIB.Math) {
+            return LIB.Math;
         }
         class Vec2 {
             v;
@@ -754,7 +754,7 @@
             Mat4,
             Quaternion,
         };
-        LIB.math = lib;
+        LIB.Math = lib;
         return lib;
     }
 })

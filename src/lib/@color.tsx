@@ -1,9 +1,9 @@
 ({
-    load(force: boolean = false): Atarabi.color.Lib {
+    load(force: boolean = false): Atarabi.Color.Lib {
 
-        const LIB = $.__lib = $.__lib || {};
-        if (!force && LIB.color) {
-            return LIB.color;
+        const LIB = $.__Atarabi = $.__Atarabi || {} as _HelperObject["__Atarabi"];
+        if (!force && LIB.Color) {
+            return LIB.Color;
         }
 
         function calculateCompletion(c: _ColorA, c1: _ColorA, c2: _ColorA): number {
@@ -67,9 +67,9 @@
             }
         }
 
-        type Color = Atarabi.color.Color;
+        type Color = Atarabi.Color.Color;
 
-        abstract class ColorBase<Ch extends string> implements Atarabi.color.ColorBase<Ch> {
+        abstract class ColorBase<Ch extends string> implements Atarabi.Color.ColorBase<Ch> {
             protected abstract v: Color;
             protected abstract create(v: Color): this;
             protected abstract chToIndex(ch: Ch): number;
@@ -127,7 +127,7 @@
             }
         }
 
-        type HueInterpolationMethod = Atarabi.color.HueInterpolationMethod;
+        type HueInterpolationMethod = Atarabi.Color.HueInterpolationMethod;
 
         function mod(n: number, m: number): number {
             return ((n % m) + m) % m;
@@ -159,7 +159,7 @@
             return mod1(h);
         }
 
-        abstract class HueColorBase<Ch extends string> extends ColorBase<Ch> implements Atarabi.color.HueColorBase<Ch> {
+        abstract class HueColorBase<Ch extends string> extends ColorBase<Ch> implements Atarabi.Color.HueColorBase<Ch> {
             abstract readonly hueIndex: number;
             lerp(c: this, t: number, method: HueInterpolationMethod = 'shorter'): this {
                 const a = this.v;
@@ -192,9 +192,9 @@
 
         const DEFAULT_GAMMA = 2.4;
 
-        type RGBCh = Atarabi.color.RGBCh;
+        type RGBCh = Atarabi.Color.RGBCh;
 
-        class RGB extends ColorBase<RGBCh> implements Atarabi.color.RGB {
+        class RGB extends ColorBase<RGBCh> implements Atarabi.Color.RGB {
             constructor(protected v: Color = [1, 1, 1, 1]) {
                 super();
             }
@@ -260,9 +260,9 @@
             return ycc.length === 4 ? [r, g, b, ycc[3]] : [r, g, b];
         }
 
-        type YCbCrCh = Atarabi.color.YCbCrCh;
+        type YCbCrCh = Atarabi.Color.YCbCrCh;
 
-        class YCbCr extends ColorBase<YCbCrCh> implements Atarabi.color.YCbCr {
+        class YCbCr extends ColorBase<YCbCrCh> implements Atarabi.Color.YCbCr {
             constructor(protected v: Color = [1, 1, 1, 1]) {
                 super();
             }
@@ -354,9 +354,9 @@
             return hsl.length === 4 ? [r, g, b, hsl[3]] : [r, g, b];
         }
 
-        type HSLCh = Atarabi.color.HSLCh;
+        type HSLCh = Atarabi.Color.HSLCh;
 
-        class HSL extends HueColorBase<HSLCh> implements Atarabi.color.HSL {
+        class HSL extends HueColorBase<HSLCh> implements Atarabi.Color.HSL {
             get hueIndex() {
                 return 0;
             }
@@ -439,9 +439,9 @@
             return hsb.length === 4 ? [r, g, b, hsb[3]] : [r, g, b];
         }
 
-        type HSBCh = Atarabi.color.HSBCh;
+        type HSBCh = Atarabi.Color.HSBCh;
 
-        class HSB extends HueColorBase<HSBCh> implements Atarabi.color.HSB {
+        class HSB extends HueColorBase<HSBCh> implements Atarabi.Color.HSB {
             get hueIndex() {
                 return 0;
             }
@@ -509,9 +509,9 @@
             return lab.length === 4 ? [r, g, b_, lab[3]] : [r, g, b_];
         }
 
-        type OklabCh = Atarabi.color.OklabCh;
+        type OklabCh = Atarabi.Color.OklabCh;
 
-        class Oklab extends ColorBase<OklabCh> implements Atarabi.color.Oklab {
+        class Oklab extends ColorBase<OklabCh> implements Atarabi.Color.Oklab {
             constructor(protected v: Color = [1, 1, 1, 1]) {
                 super();
             }
@@ -562,9 +562,9 @@
             return lch.length === 4 ? [l, a, b, lch[3]] : [l, a, b];
         }
 
-        type OklchCh = Atarabi.color.OklchCh;
+        type OklchCh = Atarabi.Color.OklchCh;
 
-        class Oklch extends HueColorBase<OklchCh> implements Atarabi.color.Oklch {
+        class Oklch extends HueColorBase<OklchCh> implements Atarabi.Color.Oklch {
             get hueIndex() {
                 return 2;
             }
@@ -610,9 +610,9 @@
             HSB,
             Oklab,
             Oklch,
-        } satisfies Atarabi.color.Lib;
+        } satisfies Atarabi.Color.Lib;
 
-        LIB.color = lib;
+        LIB.Color = lib;
 
         return lib;
     },

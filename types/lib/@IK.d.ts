@@ -13,6 +13,14 @@ interface Layer {
 
 declare namespace Atarabi {
 
+    namespace Expression {
+
+        interface Cache {
+            IK: Atarabi.IK.Lib;
+        }
+
+    }
+
     namespace IK {
 
         interface Lib {
@@ -20,7 +28,7 @@ declare namespace Atarabi {
             FABRIK2D: FABRIK2DConstructor;
         }
 
-        type Vec2 = math.Vec2;
+        type Vec2 = Math.Vec2;
 
         interface TwoBoneIK {
             solve(target: Vec2): { elbow: Vec2; hand: Vec2 };

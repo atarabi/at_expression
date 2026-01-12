@@ -1,12 +1,12 @@
 ({
     load(force: boolean = false): Atarabi.IK.Lib {
 
-        const LIB = $.__lib = $.__lib || {};
+        const LIB = $.__Atarabi = $.__Atarabi || {} as _HelperObject["__Atarabi"];
         if (!force && LIB.IK) {
             return LIB.IK;
         }
 
-        type Vec2 = Atarabi.math.Vec2;
+        type Vec2 = Atarabi.Math.Vec2;
         type AngleLimit = Atarabi.IK.AngleLimit;
 
         const { Vec2 } = thisLayer.footage("@math.jsx").sourceData.load(force);

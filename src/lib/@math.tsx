@@ -1,12 +1,12 @@
 ({
-    load(force: boolean = false): Atarabi.math.Lib {
+    load(force: boolean = false): Atarabi.Math.Lib {
 
-        const LIB = $.__lib = $.__lib || {};
-        if (!force && LIB.math) {
-            return LIB.math;
+        const LIB = $.__Atarabi = $.__Atarabi || {} as _HelperObject["__Atarabi"];
+        if (!force && LIB.Math) {
+            return LIB.Math;
         }
 
-        class Vec2 implements Atarabi.math.Vec2 {
+        class Vec2 implements Atarabi.Math.Vec2 {
             constructor(public readonly v: number[]) { }
             get x(): number { return this.v[0]; }
             get y(): number { return this.v[1]; }
@@ -102,7 +102,7 @@
             }
         }
 
-        class Vec3 implements Atarabi.math.Vec3 {
+        class Vec3 implements Atarabi.Math.Vec3 {
             constructor(public readonly v: number[]) { }
             get x(): number { return this.v[0]; }
             get y(): number { return this.v[1]; }
@@ -198,7 +198,7 @@
             }
         }
 
-        class Mat3 implements Atarabi.math.Mat3 {
+        class Mat3 implements Atarabi.Math.Mat3 {
             constructor(
                 public readonly m: number[] = [
                     1, 0, 0,
@@ -352,7 +352,7 @@
             }
         }
 
-        class Mat4 implements Atarabi.math.Mat4 {
+        class Mat4 implements Atarabi.Math.Mat4 {
             constructor(
                 public readonly m: number[] = [
                     1, 0, 0, 0,
@@ -730,7 +730,7 @@
             }
         }
 
-        class Quaternion implements Atarabi.math.Quaternion {
+        class Quaternion implements Atarabi.Math.Quaternion {
             x: number;
             y: number;
             z: number;
@@ -835,9 +835,9 @@
             Mat3,
             Mat4,
             Quaternion,
-        } satisfies Atarabi.math.Lib;
+        } satisfies Atarabi.Math.Lib;
 
-        LIB.math = lib;
+        LIB.Math = lib;
 
         return lib;
     }

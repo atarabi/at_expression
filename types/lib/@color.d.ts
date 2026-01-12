@@ -1,18 +1,26 @@
 interface Global {
     footage(name: "@color.jsx"): Footage<{
-        load(force?: boolean): Atarabi.color.Lib;
+        load(force?: boolean): Atarabi.Color.Lib;
     }>;
 }
 
 interface Layer {
     footage(name: "@color.jsx"): Footage<{
-        load(force?: boolean): Atarabi.color.Lib;
+        load(force?: boolean): Atarabi.Color.Lib;
     }>;
 }
 
 declare namespace Atarabi {
 
-    namespace color {
+    namespace Expression {
+
+        interface Cache {
+            Color: Atarabi.Color.Lib;
+         }
+
+    }
+
+    namespace Color {
 
         interface Lib {
             keyframeProgress: typeof keyframeProgress;
