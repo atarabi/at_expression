@@ -1,15 +1,7 @@
 // Depends on @math
-interface Global {
-    footage(name: "@IK.jsx"): Footage<{
-        load(force?: boolean): Atarabi.IK.Lib;
-    }>;
-}
+interface Global extends Atarabi.IK.FootageProvider { }
 
-interface Layer {
-    footage(name: "@IK.jsx"): Footage<{
-        load(force?: boolean): Atarabi.IK.Lib;
-    }>;
-}
+interface Layer extends Atarabi.IK.FootageProvider { }
 
 declare namespace Atarabi {
 
@@ -22,6 +14,12 @@ declare namespace Atarabi {
     }
 
     namespace IK {
+
+        interface FootageProvider {
+            footage(name: "@IK.jsx"): Footage<{
+                load(force?: boolean): Lib;
+            }>;
+        }
 
         interface Lib {
             TwoBoneIK: TwoBoneIKConstructor;

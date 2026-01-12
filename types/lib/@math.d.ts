@@ -1,14 +1,6 @@
-interface Global {
-    footage(name: "@math.jsx"): Footage<{
-        load(force?: boolean): Atarabi.Math.Lib;
-    }>;
-}
+interface Global extends Atarabi.Math.FootageProvider { }
 
-interface Layer {
-    footage(name: "@math.jsx"): Footage<{
-        load(force?: boolean): Atarabi.Math.Lib;
-    }>;
-}
+interface Layer extends Atarabi.Math.FootageProvider { }
 
 declare namespace Atarabi {
 
@@ -21,6 +13,12 @@ declare namespace Atarabi {
     }
 
     namespace Math {
+
+        interface FootageProvider {
+            footage(name: "@math.jsx"): Footage<{
+                load(force?: boolean): Lib;
+            }>;
+        }
 
         interface Lib {
             Vec2: Vec2Constructor;

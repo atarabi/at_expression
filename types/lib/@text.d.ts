@@ -1,14 +1,6 @@
-interface Global {
-    footage(name: "@text.jsx"): Footage<{
-        load(force?: boolean): Atarabi.Text.Lib;
-    }>;
-}
+interface Global extends Atarabi.Text.FootageProvider { }
 
-interface Layer {
-    footage(name: "@text.jsx"): Footage<{
-        load(force?: boolean): Atarabi.Text.Lib;
-    }>;
-}
+interface Layer extends Atarabi.Text.FootageProvider { }
 
 declare namespace Atarabi {
 
@@ -21,6 +13,12 @@ declare namespace Atarabi {
     }
 
     namespace Text {
+
+        interface FootageProvider {
+            footage(name: "@text.jsx"): Footage<{
+                load(force?: boolean): Lib;
+            }>;
+        }
 
         interface Lib {
             CharClass: CharClassMap;

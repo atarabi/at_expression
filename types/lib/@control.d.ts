@@ -1,15 +1,7 @@
 // Depends on @script(https://github.com/atarabi/at_script) and @expression(Startup)
-interface Global {
-    footage(name: "@control.jsx"): Footage<{
-        load(force?: boolean): Atarabi.Control.Lib;
-    }>;
-}
+interface Global extends Atarabi.Control.FootageProvider { }
 
-interface Layer {
-    footage(name: "@control.jsx"): Footage<{
-        load(force?: boolean): Atarabi.Control.Lib;
-    }>;
-}
+interface Layer extends Atarabi.Control.FootageProvider { }
 
 declare namespace Atarabi {
 
@@ -22,6 +14,12 @@ declare namespace Atarabi {
     }
 
     namespace Control {
+
+        interface FootageProvider {
+            footage(name: "@control.jsx"): Footage<{
+                load(force?: boolean): Lib;
+            }>;
+        }
 
         interface Lib {
             create(settings: SettingsWithType): Property;

@@ -1,16 +1,7 @@
 // Depends on @script(https://github.com/atarabi/at_script) and @expression(Startup)
-interface Global {
-    footage(name: "@pseudo.jsx"): Footage<{
-        load(force?: boolean): Atarabi.Pseudo.Lib;
-    }>;
-}
+interface Global extends Atarabi.Pseudo.FootageProvider { }
 
-interface Layer {
-    footage(name: "@pseudo.jsx"): Footage<{
-        load(force?: boolean): Atarabi.Pseudo.Lib;
-    }>;
-}
-
+interface Layer extends Atarabi.Pseudo.FootageProvider { }
 
 declare namespace Atarabi {
 
@@ -23,6 +14,12 @@ declare namespace Atarabi {
     }
 
     namespace Pseudo {
+
+        interface FootageProvider {
+            footage(name: "@pseudo.jsx"): Footage<{
+                load(force?: boolean): Lib;
+            }>;
+        }
 
         interface Lib {
             (name: string, matchName?: string): Builder;
