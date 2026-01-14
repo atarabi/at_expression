@@ -1,6 +1,9 @@
-interface Global extends Atarabi.Math.FootageProvider { }
+interface _FootageProvider {
+    footage(name: "@math.jsx"): Footage<{
+        load(force?: boolean): Atarabi.Math.Lib;
+    }>;
+}
 
-interface Layer extends Atarabi.Math.FootageProvider { }
 
 declare namespace Atarabi {
 
@@ -13,12 +16,6 @@ declare namespace Atarabi {
     }
 
     namespace Math {
-
-        interface FootageProvider {
-            footage(name: "@math.jsx"): Footage<{
-                load(force?: boolean): Lib;
-            }>;
-        }
 
         interface Lib {
             Vec2: Vec2Constructor;
@@ -48,6 +45,7 @@ declare namespace Atarabi {
 
         interface Vec2Constructor {
             new(v: number[]): Vec2;
+            from(v: number[]): Vec2;
             zero(): Vec2;
             isVec2(v: any): v is Vec2;
         }
@@ -72,6 +70,7 @@ declare namespace Atarabi {
 
         interface Vec3Constructor {
             new(v: number[]): Vec3;
+            from(v: number[]): Vec3;
             zero(): Vec3;
             isVec3(v: any): v is Vec3;
         }
@@ -100,6 +99,7 @@ declare namespace Atarabi {
 
         interface Mat3Constructor {
             new(m: number[]): Mat3;
+            from(m: number[]): Mat3;
             zero(): Mat3;
             identity(): Mat3;
             translate(tx: number, ty: number): Mat3;
@@ -144,6 +144,7 @@ declare namespace Atarabi {
 
         interface Mat4Constructor {
             new(m: number[]): Mat4;
+            from(m: number[]): Mat4;
             zero(): Mat4;
             identity(): Mat4;
             translate(tx: number, ty: number, tz: number): Mat4;
@@ -172,6 +173,7 @@ declare namespace Atarabi {
 
         interface QuaternionConstructor {
             new(x?: number, y?: number, z?: number, w?: number): Quaternion;
+            from(x?: number, y?: number, z?: number, w?: number): Quaternion;
             fromEuler(rx: number, ry: number, rz: number): Quaternion;
             isQuaternion(q: any): q is Quaternion;
         }

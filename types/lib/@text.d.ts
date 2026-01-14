@@ -1,6 +1,8 @@
-interface Global extends Atarabi.Text.FootageProvider { }
-
-interface Layer extends Atarabi.Text.FootageProvider { }
+interface _FootageProvider {
+    footage(name: "@text.jsx"): Footage<{
+        load(force?: boolean): Atarabi.Text.Lib;
+    }>;
+}
 
 declare namespace Atarabi {
 
@@ -13,12 +15,6 @@ declare namespace Atarabi {
     }
 
     namespace Text {
-
-        interface FootageProvider {
-            footage(name: "@text.jsx"): Footage<{
-                load(force?: boolean): Lib;
-            }>;
-        }
 
         interface Lib {
             CharClass: CharClassMap;
@@ -152,6 +148,18 @@ declare namespace Atarabi {
             i: TextStyleOptions;
             b: TextStyleOptions;
             a: TextStyleOptions;
+        }
+
+        interface CustomMarkupStyle {
+            [delimiter: string]: TextStyleOptions;
+        }
+
+        interface TagMarkupStyle {
+            [tag: string]: TextStyleOptions;
+        }
+
+        interface TagMarkupVariables {
+            [variable: string]: boolean | string | number | number[];
         }
 
         type Range = { from: number; count?: number };
@@ -343,6 +351,8 @@ declare namespace Atarabi {
         type TextStyleFacade = {
             // as
             asMarkdown(style: Partial<MarkdownStyle>): TextStyleContext;
+            asCustomMarkup(style: CustomMarkupStyle): TextStyleContext;
+            asTagMarkup(style: TagMarkupStyle, variables?: TagMarkupVariables): TextStyleContext;
             // static
             byCharClass(options?: CharClassOptions): TextStyleContext<CharClassTextStyleBuilder>;
             byRegExp(): TextStyleContext<RegExpTextStyleBuilder>;

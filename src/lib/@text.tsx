@@ -13,6 +13,28 @@
         type CharClassKey = Atarabi.Text.CharClassKey;
         const DEFAULT_LOCALE = Intl.DateTimeFormat().resolvedOptions().locale;
 
+        const MSG = {
+            TYPE_MISMATCH: (key: string, expected: string, actual: any) =>
+                `Expected "${key}" to be ${expected}, but got: "${actual}"`,
+            UNKNOWN_KEY: (key: string, context: string = "attribute") =>
+                `Unknown ${context}: "${key}"`,
+            INVALID_OPTION: (key: string, options: (string | number)[], actual: any) =>
+                `"${key}" must be one of [${options.join(", ")}], but got: "${actual}"`,
+            RANGE_ERROR: (key: string, min: number, max: number, actual: any) =>
+                `"${key}" must be between ${min} and ${max}, but got: "${actual}"`,
+            REQUIRED: (key: string) =>
+                `"${key}" is required and cannot be empty.`,
+            PRECONDITION_REQUIRED: (action: string, precondition: string) =>
+                `"${precondition}" must be called before calling "${action}"`,
+        } as const;
+
+        const EXPECTED = {
+            BOOLEAN: "a boolean (true/false)",
+            NUMBER: "a number",
+            COLOR: "a color array [number, number, number]",
+            STRING: "a string",
+        } as const;
+
         class CharClass implements Atarabi.Text.CharClass {
             private _re: RegExp;
             constructor(private _name: string, re: RegExp) {
@@ -102,7 +124,7 @@
             const fns = items.map(m => {
                 if (typeof m === "string") {
                     const cc = CHAR_CLASS_REGISTRY[m];
-                    if (!cc) throw new Error(`Unknown CharClass: ${m}`);
+                    if (!cc) throw new Error(MSG.UNKNOWN_KEY(m, "CharClass"));
                     return (g: string) => g !== null && cc.test(g);
                 }
                 if (CharClass.isCharClass(m)) return (g: string) => g !== null && m.test(g);
@@ -207,7 +229,7 @@
 
         function applyTextStyleUniversal(style: TextStyleProperty, field: string, value: any, startIndex?: number, count?: number): TextStyleProperty {
             const methodName = TEXT_STYLE_METHOD_MAP[field];
-            if (!methodName) throw new Error(`Invalid field: ${field}`);
+            if (!methodName) throw new Error(MSG.UNKNOWN_KEY(field, "style"));
 
             // kerning
             if (field === "kerning") {
@@ -221,7 +243,7 @@
 
             // other
             const fn = (style as any)[methodName];
-            if (typeof fn !== "function") throw new Error(`Invalid method: ${methodName}`);
+            if (typeof fn !== "function") throw new Error(MSG.UNKNOWN_KEY(methodName, "style function"));
 
             if (startIndex !== undefined && count !== undefined) {
                 return fn.call(style, value, startIndex, count);
@@ -361,8 +383,10 @@
             return result;
         }
 
+        type StylesWithOps = { pre: boolean; text?: string; styles: RangeWithStyle[]; ops: TransformOp[]; };
+
         interface TextStyleResolver {
-            resolve(text: string): RangeWithStyle[] | { styles: RangeWithStyle[]; ops: TransformOp[]; };
+            resolve(text: string): RangeWithStyle[] | StylesWithOps;
         }
 
         abstract class TextStyleBuilder<Rule> implements TextStyleResolver, Atarabi.Text.TextStyleBuilder<Rule> {
@@ -371,7 +395,7 @@
                 this.items.push({ rule, style });
                 return this;
             }
-            abstract resolve(text: string): RangeWithStyle[] | { styles: RangeWithStyle[]; ops: TransformOp[]; };
+            abstract resolve(text: string): RangeWithStyle[] | StylesWithOps;
         }
 
         type CharClassRule = Atarabi.Text.CharClassRule;
@@ -380,14 +404,14 @@
         function toRegExp(m: CharMatcher): RegExp | RegExp[] {
             if (typeof m === "string") {
                 const r = CHAR_CLASS_REGISTRY[m as CharClassKey];
-                if (!r) throw new Error(`Unsupported CharClass: ${m}`);
+                if (!r) throw new Error(MSG.UNKNOWN_KEY(m, "CharClass"));
                 return r.re;
             } else if (CharClass.isCharClass(m)) {
                 return (m as CharClass).re;
             } else if (m instanceof RegExp) {
                 return m;
             }
-            throw new Error(`Unsupported CharClass: ${m}`);
+            throw new Error(MSG.UNKNOWN_KEY(m, "CharClass"));
         }
 
         function annotateByCharClassOverlay(text: string, charClass: CharMatcher | CharMatcher[]): Range[] {
@@ -2062,91 +2086,365 @@
             };
         }
 
-        function parseMarkdown(input: string, styleConfig: Partial<Atarabi.Text.MarkdownStyle>, offset: number = 0): { text: string; styles: RangeWithStyle[]; ops: TransformOp[] } {
-            const ops: TransformOp[] = [];
-            const ranges: RangeWithStyle[] = [];
-            let currentOutputPos = 0;
-            let lastIndex = 0;
+        class AsMarkdown implements TextStyleResolver {
+            private readonly pattern = /(?<h>^(?<h_level>#{1,6})\s+(?<h_t>.*)$)|(?<b>\*\*(?<b_t>.*?)\*\*)|(?<i>(?<i_marker>[*_])(?<i_t>.*?)\k<i_marker>)|(?<link>\[(?<l_t>.*?)\]\((?<l_u>.*?)\))/gdm;
+            constructor(protected style: Partial<Atarabi.Text.MarkdownStyle>) { }
+            resolve(text: string): StylesWithOps {
+                const { styles, ops } = this.parse(text);
+                return { pre: false, styles, ops };
+            }
+            private parse(input: string, offset: number = 0): { styles: RangeWithStyle[]; ops: TransformOp[]; length: number } {
+                const ops: TransformOp[] = [];
+                const styles: RangeWithStyle[] = [];
+                let currentOutputPos = 0;
+                let lastIndex = 0;
 
-            const pattern = /(?<h>^(?<h_level>#{1,6})\s+(?<h_t>.*)$)|(?<b>\*\*(?<b_t>.*?)\*\*)|(?<i>_(?<i_t>.*?)_)|(?<link>\[(?<l_t>.*?)\]\((?<l_u>.*?)\))/gdm;
+                const savedLastIndex = this.pattern.lastIndex;
+                this.pattern.lastIndex = 0;
 
-            let match: any;
-            while ((match = pattern.exec(input)) !== null) {
-                if (match.index > lastIndex) {
-                    const count = match.index - lastIndex;
-                    ops.push({ type: "move", range: { from: offset + lastIndex, count }, to: currentOutputPos });
+                let match: RegExpExecArray = null;
+                while ((match = this.pattern.exec(input)) !== null) {
+                    if (match.index > lastIndex) {
+                        const count = match.index - lastIndex;
+                        ops.push({
+                            type: "move",
+                            range: { from: offset + lastIndex, count },
+                            to: currentOutputPos
+                        });
+                        currentOutputPos += count;
+                    }
+
+                    const groups = match.groups;
+                    const indices = match.indices.groups;
+
+                    let content = "", contentStartInInput = 0, currentStyle: any = undefined;
+
+                    if (groups.h) {
+                        content = groups.h_t; contentStartInInput = indices.h_t[0];
+                        currentStyle = this.style[`h${groups.h_level.length}` as keyof Atarabi.Text.MarkdownStyle];
+                    } else if (groups.b) {
+                        content = groups.b_t; contentStartInInput = indices.b_t[0];
+                        currentStyle = this.style.b;
+                    } else if (groups.i) {
+                        content = groups.i_t; contentStartInInput = indices.i_t[0];
+                        currentStyle = this.style.i;
+                    } else if (groups.link) {
+                        content = groups.l_t; contentStartInInput = indices.l_t[0];
+                        currentStyle = this.style.a;
+                    }
+
+                    const nextSearchPos = this.pattern.lastIndex;
+                    const sub = this.parse(content, offset + contentStartInInput);
+                    this.pattern.lastIndex = nextSearchPos;
+
+                    for (const subOp of sub.ops) {
+                        if (subOp.type === "move") {
+                            ops.push({ ...subOp, to: subOp.to + currentOutputPos });
+                        } else {
+                            ops.push({ ...subOp, at: subOp.at + currentOutputPos });
+                        }
+                    }
+
+                    if (currentStyle) {
+                        styles.push({
+                            from: currentOutputPos,
+                            count: sub.length,
+                            style: currentStyle
+                        });
+                    }
+
+                    for (const subStyle of sub.styles) {
+                        styles.push({ ...subStyle, from: subStyle.from + currentOutputPos });
+                    }
+
+                    currentOutputPos += sub.length;
+                    lastIndex = match.index + match[0].length;
+                }
+
+                if (lastIndex < input.length) {
+                    const count = input.length - lastIndex;
+                    ops.push({
+                        type: "move",
+                        range: { from: offset + lastIndex, count },
+                        to: currentOutputPos
+                    });
                     currentOutputPos += count;
                 }
 
-                const groups = match.groups;
-                const indices = match.indices.groups;
+                this.pattern.lastIndex = savedLastIndex;
 
-                let content = "";
-                let contentStart = 0;
-                let currentStyle: TextStyleOptions = null;
-
-                if (groups.h) {
-                    const level = groups.h_level.length;
-                    content = groups.h_t;
-                    contentStart = indices.h_t[0];
-                    const hKey = `h${level}` as keyof Atarabi.Text.MarkdownStyle;
-                    currentStyle = styleConfig[hKey];
-                } else if (groups.b) {
-                    content = groups.b_t;
-                    contentStart = indices.b_t[0];
-                    currentStyle = styleConfig.b;
-                } else if (groups.i) {
-                    content = groups.i_t;
-                    contentStart = indices.i_t[0];
-                    currentStyle = styleConfig.i;
-                } else if (groups.link) {
-                    content = groups.l_t;
-                    contentStart = indices.l_t[0];
-                    currentStyle = styleConfig.a;
-                }
-
-                const sub = parseMarkdown(content, styleConfig, offset + contentStart);
-
-                for (const subOp of sub.ops) {
-                    if (subOp.type === "move") {
-                        ops.push({ ...subOp, to: subOp.to + currentOutputPos });
-                    } else if (subOp.type === "insert") {
-                        ops.push({ ...subOp, at: subOp.at + currentOutputPos });
-                    }
-                }
-
-                ranges.push(...sub.styles);
-
-                if (currentStyle) {
-                    ranges.push({
-                        from: offset + contentStart,
-                        count: content.length,
-                        style: currentStyle
-                    });
-                }
-
-                currentOutputPos += sub.text.length;
-                lastIndex = match.index + match[0].length;
+                return { styles, ops, length: currentOutputPos };
             }
-
-            if (lastIndex < input.length) {
-                const count = input.length - lastIndex;
-                ops.push({ type: "move", range: { from: offset + lastIndex, count }, to: currentOutputPos });
-            }
-
-            const text = ops
-                .filter((op): op is Extract<TransformOp, { type: "move" }> => op.type === "move")
-                .map(op => input.slice(op.range.from - offset, op.range.from - offset + op.range.count))
-                .join("");
-
-            return { text, styles: ranges, ops };
         }
 
-        class AsMarkdown implements TextStyleResolver {
-            constructor(protected style: Partial<Atarabi.Text.MarkdownStyle>) { }
-            resolve(text: string): { styles: RangeWithStyle[]; ops: TransformOp[]; } {
-                const { styles, ops } = parseMarkdown(text, this.style);
-                return { styles, ops };
+        class AsCustomMarkup implements TextStyleResolver {
+            private readonly pattern: RegExp | null = null;
+            private readonly delimiters: string[];
+            constructor(protected style: Atarabi.Text.CustomMarkupStyle) {
+                this.delimiters = Object.keys(style).sort((a, b) => b.length - a.length);
+                if (this.delimiters.length > 0) {
+                    const escapedDelims = this.delimiters.map(d => d.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')).join('|');
+                    this.pattern = new RegExp(
+                        `(?<!\\\\)(?:\\\\\\\\)*(?<delim>${escapedDelims})(?<content>(?:\\\\.|(?!\\k<delim>).)*?)(?<!\\\\)(?:\\\\\\\\)*\\k<delim>`,
+                        'gdm'
+                    );
+                }
+            }
+            resolve(text: string): StylesWithOps {
+                const { styles, ops } = this.parse(text);
+                return { pre: false, styles, ops };
+            }
+            private parse(input: string, offset: number = 0): { styles: RangeWithStyle[]; ops: TransformOp[]; length: number } {
+                const ops: TransformOp[] = [];
+                const ranges: RangeWithStyle[] = [];
+                let currentOutputPos = 0;
+                let lastIndex = 0;
+
+                if (!this.pattern || this.delimiters.length === 0) {
+                    return { styles: [], ...this.applyUnescapeOps(input, offset, 0) };
+                }
+
+                const savedLastIndex = this.pattern.lastIndex;
+                this.pattern.lastIndex = 0;
+
+                let match: RegExpExecArray = null;
+                while ((match = this.pattern.exec(input)) !== null) {
+                    const delim = match.groups.delim;
+                    const indices = match.indices.groups;
+                    const actualTagStart = indices.delim[0];
+
+                    if (actualTagStart > lastIndex) {
+                        const res = this.applyUnescapeOps(input.slice(lastIndex, actualTagStart), offset + lastIndex, currentOutputPos);
+                        ops.push(...res.ops);
+                        currentOutputPos += res.length;
+                    }
+
+                    const content = match.groups.content;
+                    const contentStart = indices.content[0];
+                    const styleStartPos = currentOutputPos;
+
+                    const sub = this.parse(content, offset + contentStart);
+
+                    for (const subOp of sub.ops) {
+                        ops.push(subOp.type === "move"
+                            ? { ...subOp, to: subOp.to + currentOutputPos }
+                            : { ...subOp, at: subOp.at + currentOutputPos });
+                    }
+
+                    const tempSubStyles = sub.styles.map(s => ({ ...s, from: s.from + currentOutputPos }));
+                    currentOutputPos += sub.length;
+
+                    const endTagStart = match.index + match[0].length - delim.length;
+                    let postLength = 0;
+                    if (endTagStart > (indices.content[1])) {
+                        const res = this.applyUnescapeOps(input.slice(indices.content[1], endTagStart), offset + indices.content[1], currentOutputPos);
+                        ops.push(...res.ops);
+                        postLength = res.length;
+                        currentOutputPos += postLength;
+                    }
+
+                    const style = this.style[delim];
+                    if (style) {
+                        ranges.push({ from: styleStartPos, count: sub.length + postLength, style });
+                    }
+                    ranges.push(...tempSubStyles);
+
+                    lastIndex = match.index + match[0].length;
+                }
+
+                if (lastIndex < input.length) {
+                    const res = this.applyUnescapeOps(input.slice(lastIndex), offset + lastIndex, currentOutputPos);
+                    ops.push(...res.ops);
+                    currentOutputPos += res.length;
+                }
+
+                this.pattern.lastIndex = savedLastIndex;
+
+                return { styles: ranges, ops, length: currentOutputPos };
+            }
+            private applyUnescapeOps(text: string, baseOffset: number, outputStart: number): { ops: TransformOp[], length: number } {
+                const ops: TransformOp[] = [];
+                let outIdx = 0;
+                for (let i = 0; i < text.length; i++) {
+                    if (text[i] === '\\' && i + 1 < text.length) {
+                        ops.push({
+                            type: "move",
+                            range: { from: baseOffset + i + 1, count: 1 },
+                            to: outputStart + outIdx
+                        });
+                        i++;
+                    } else {
+                        ops.push({
+                            type: "move", range: { from: baseOffset + i, count: 1 }, to: outputStart + outIdx
+                        });
+                    }
+                    outIdx++;
+                }
+                return { ops, length: outIdx };
+            }
+        }
+
+        function hasAnyProperty(obj: object): boolean {
+            for (const _ in obj) return true;
+            return false;
+        }
+
+        function parseColor(value: string): [number, number, number] {
+            try {
+                const parsed = JSON.parse(value);
+                if (!Array.isArray(parsed) || parsed.length !== 3) {
+                    throw new Error;
+                }
+
+                for (let i = 0; i < 3; i++) {
+                    if (typeof parsed[i] !== 'number') {
+                        throw new Error;
+                    }
+                }
+                return parsed as [number, number, number];
+            } catch (e) {
+                throw e;
+            }
+        }
+
+        class AsTagMarkup implements TextStyleResolver {
+            constructor(protected style: Atarabi.Text.TagMarkupStyle, protected variables: Atarabi.Text.TagMarkupVariables) { }
+            resolve(text: string): StylesWithOps {
+                const { styles, ops } = this.parse(text);
+                return { pre: false, styles, ops };
+            }
+            private readonly pattern = /(?<!\\)<(?<tagname>[^>\s/]+)(?<attrs>.*?)>(?<content>.*?)<\/\k<tagname>>/gdm;
+            private readonly stylePattern = /style\s*=\s*(?<quote>["'”])(?<sValue>.*?)\k<quote>/d;
+            private parse(input: string, offset: number = 0): { styles: RangeWithStyle[]; ops: TransformOp[]; length: number } {
+                const ops: TransformOp[] = [];
+                const ranges: RangeWithStyle[] = [];
+                let currentOutputPos = 0;
+                let lastIndex = 0;
+
+                const savedLastIndex = this.pattern.lastIndex;
+                this.pattern.lastIndex = 0;
+
+                let match: RegExpExecArray | null = null;
+                while ((match = this.pattern.exec(input)) !== null) {
+                    if (match.index > lastIndex) {
+                        const res = this.applyUnescapeOps(input.slice(lastIndex, match.index), offset + lastIndex, currentOutputPos);
+                        ops.push(...res.ops);
+                        currentOutputPos += res.length;
+                    }
+
+                    const groups = match.groups!;
+                    const indices = match.indices!.groups!;
+
+                    const nextSearchPos = this.pattern.lastIndex;
+                    const sub = this.parse(groups.content, offset + indices.content[0]);
+                    this.pattern.lastIndex = nextSearchPos;
+
+                    let mergedStyle = this.style[groups.tagname] ? { ...this.style[groups.tagname] } : undefined;
+                    if (groups.attrs && groups.attrs.includes("style=")) {
+                        const styleMatch = groups.attrs.match(this.stylePattern);
+                        if (styleMatch) {
+                            const inline = Object.fromEntries(
+                                styleMatch.groups!.sValue.split(';').reduce((acc: [string, any][], s: string) => {
+                                    const trimmed = s.trim();
+                                    if (trimmed) {
+                                        const [k, v] = trimmed.split(':').map(x => x.trim());
+                                        acc.push([k, this.parseInlineStyle(k, v)]);
+                                    }
+                                    return acc;
+                                }, [])
+                            );
+                            mergedStyle = mergedStyle ? { ...mergedStyle, ...inline } : inline;
+                        }
+                    }
+
+                    if (mergedStyle) {
+                        ranges.push({ from: currentOutputPos, count: sub.length, style: mergedStyle });
+                    }
+
+                    for (const subOp of sub.ops) {
+                        ops.push(subOp.type === "move"
+                            ? { ...subOp, to: subOp.to + currentOutputPos }
+                            : { ...subOp, at: subOp.at + currentOutputPos });
+                    }
+                    ranges.push(...sub.styles.map(s => ({ ...s, from: s.from + currentOutputPos })));
+
+                    currentOutputPos += sub.length;
+                    lastIndex = match.index + match[0].length;
+                }
+
+                if (lastIndex < input.length) {
+                    const res = this.applyUnescapeOps(input.slice(lastIndex), offset + lastIndex, currentOutputPos);
+                    ops.push(...res.ops);
+                    currentOutputPos += res.length;
+                }
+
+                this.pattern.lastIndex = savedLastIndex;
+                return { styles: ranges, ops, length: currentOutputPos };
+            }
+            private applyUnescapeOps(text: string, baseOffset: number, outputStart: number) {
+                const ops: TransformOp[] = [];
+                let outIdx = 0;
+                for (let i = 0; i < text.length; i++) {
+                    if (text[i] === '\\' && i + 1 < text.length) {
+                        ops.push({ type: "move", range: { from: baseOffset + i + 1, count: 1 }, to: outputStart + outIdx });
+                        i++;
+                    } else {
+                        ops.push({ type: "move", range: { from: baseOffset + i, count: 1 }, to: outputStart + outIdx });
+                    }
+                    outIdx++;
+                }
+                return { ops, length: outIdx };
+            }
+            private readonly varPattern: RegExp = /^\$\{(?<varName>.+?)\}$/;
+            private parseInlineStyle(key: string, value: string): boolean | string | number | number[] {
+                const varMatch = value.match(this.varPattern);
+                if (varMatch) {
+                    const varName = varMatch.groups.varName;
+                    if (Object.prototype.hasOwnProperty.call(this.variables, varName)) {
+                        return this.variables[varName];
+                    }
+                    throw new Error(MSG.UNKNOWN_KEY(varName, "variable"));
+                }
+                switch (key) {
+                    case "applyFill":
+                    case "applyStroke":
+                    case "isAllCaps":
+                    case "isAutoLeading":
+                    case "isFauxBold":
+                    case "isFauxItalic":
+                    case "isLigature":
+                    case "isSmallCaps":
+                        if (value === "true") return true;
+                        if (value === "false") return false;
+                        throw new Error(MSG.TYPE_MISMATCH(key, EXPECTED.BOOLEAN, value));
+                    case "baselineDirection":
+                    case "baselineOption":
+                    case "digitSet":
+                    case "font":
+                    case "kerningType":
+                    case "lineJoin":
+                        return value;
+                    case "baselineShift":
+                    case "fontSize":
+                    case "horizontalScaling":
+                    case "kerning":
+                    case "leading":
+                    case "strokeWidth":
+                    case "tracking":
+                    case "tsume":
+                    case "verticalScaling":
+                        const v = parseFloat(value);
+                        if (isNaN(v)) throw new Error(MSG.TYPE_MISMATCH(key, EXPECTED.NUMBER, value));
+                        return v;
+                    case "fillColor":
+                    case "strokeColor":
+                        try {
+                            return parseColor(value);
+                        } catch (e) {
+                            throw new Error(MSG.TYPE_MISMATCH(key, EXPECTED.COLOR, value));
+                        }
+                }
+                throw new Error(MSG.UNKNOWN_KEY(key, "style"));
             }
         }
 
@@ -2159,13 +2457,13 @@
             protected transforms: ((text: string, ctx: TextTransformContext) => string)[] = [];
             protected inputText: string = null;
             input(text: string): this {
-                if (this.items.length) throw new Error(`input() must be called before calling as...(), by...(), forEach...()`);
-                if (this.transforms.length) throw new Error(`input() must be called before transform()`);
+                if (this.items.length) throw new Error(MSG.PRECONDITION_REQUIRED("input()", "as...(), by...(), forEach...()"));
+                if (this.transforms.length) throw new Error(MSG.PRECONDITION_REQUIRED("input()", "transform()"));
                 this.inputText = text;
                 return this;
             }
             transform(fn: (text: string, ctx: TextTransformContext) => string): this {
-                if (this.items.length) throw new Error(`transform() must be called before calling as...(), by...(), forEach...()`);
+                if (this.items.length) throw new Error(MSG.PRECONDITION_REQUIRED("Mtransform()", "as...(), by...(), forEach...()"));
                 this.transforms.push(fn);
                 return this;
             }
@@ -2190,6 +2488,14 @@
             }
             asMarkdown(style: Partial<Atarabi.Text.MarkdownStyle>): this {
                 this.addBuilder(new AsMarkdown(style));
+                return this;
+            }
+            asCustomMarkup(style: Atarabi.Text.CustomMarkupStyle): this {
+                this.addBuilder(new AsCustomMarkup(style));
+                return this;
+            }
+            asTagMarkup(style: Atarabi.Text.TagMarkupStyle, variables: Atarabi.Text.TagMarkupVariables = {}): this {
+                this.addBuilder(new AsTagMarkup(style, variables));
                 return this;
             }
             byCharClass(options?: CharClassOptions): this {
@@ -2264,9 +2570,19 @@
                     if (Array.isArray(resolved)) {
                         ranges.push(...resolved);
                     } else {
-                        ranges.push(...resolved.styles);
-                        text = applyTransformOp(text, resolved.ops);
-                        ranges = updateRanges(ranges, resolved.ops);
+                        const { pre, styles, ops } = resolved;
+                        if (typeof resolved.text === 'string') {
+                            text = resolved.text;
+                        } else {
+                            text = applyTransformOp(text, resolved.ops);
+                        }
+                        if (pre) {
+                            ranges.push(...resolved.styles);
+                            ranges = updateRanges(ranges, resolved.ops);
+                        } else {
+                            ranges = updateRanges(ranges, resolved.ops);
+                            ranges.push(...resolved.styles);
+                        }
                     }
                     for (const { pattern, replacement, transforms } of replaces) {
                         const { output, ops } = applyReplace(text, pattern, replacement, transforms);

@@ -1,8 +1,8 @@
 export { };
 
-const Pseudo = footage("@pseudo.jsx").sourceData.load();
+const Effect = footage("@effect.jsx").sourceData.load();
 
-const pseudo = Pseudo("Master")
+const pseudo = Effect.Pseudo("Master")
     .layer("Layer", 0)
     .angle("Angle", 90)
     .path("Path")

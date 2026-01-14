@@ -1,16 +1,12 @@
-interface Global extends Atarabi.Test.FootageProvider { }
-
-interface Layer extends Atarabi.Test.FootageProvider { }
+interface _FootageProvider {
+    footage(name: "@test.jsx"): Footage<{
+        load(): Atarabi.Test.Lib;
+    }>;
+}
 
 declare namespace Atarabi {
 
     namespace Test {
-
-        interface FootageProvider {
-            footage(name: "@test.jsx"): Footage<{
-                load(): Lib;
-            }>;
-        }
 
         interface Lib {
             Assert: Assert;

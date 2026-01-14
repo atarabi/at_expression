@@ -100,6 +100,9 @@
             get() {
                 return this.v;
             }
+            static from(v) {
+                return new Vec2(v);
+            }
             static zero() {
                 return new Vec2([0, 0]);
             }
@@ -202,6 +205,9 @@
             get() {
                 return this.v;
             }
+            static from(v) {
+                return new Vec3(v);
+            }
             static zero() {
                 return new Vec3([0, 0, 0]);
             }
@@ -289,6 +295,9 @@
                 return (`[ ${m[0]}, ${m[1]}, ${m[2]} ]\n` +
                     `[ ${m[3]}, ${m[4]}, ${m[5]} ]\n` +
                     `[ ${m[6]}, ${m[7]}, ${m[8]} ]`);
+            }
+            static from(m) {
+                return new Mat3(m);
             }
             static zero() {
                 return new Mat3([
@@ -605,6 +614,9 @@
                     `[ ${m.slice(8, 12).join(', ')} ]\n` +
                     `[ ${m.slice(12, 16).join(', ')} ]`);
             }
+            static from(m) {
+                return new Mat4(m);
+            }
             static zero() {
                 return new Mat4(new Array(16).fill(0));
             }
@@ -736,6 +748,9 @@
                 const cosy_cosp = 1 - 2 * (q.y * q.y + q.z * q.z);
                 const yaw = Math.atan2(siny_cosp, cosy_cosp);
                 return new Vec3([roll, -pitch, yaw]);
+            }
+            static from(x = 0, y = 0, z = 0, w = 1) {
+                return new Quaternion(x, y, z, w);
             }
             static fromEuler(rx, ry, rz) {
                 const cx = Math.cos(rx / 2), sx = Math.sin(rx / 2);

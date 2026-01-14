@@ -19,11 +19,16 @@ interface _HelperObject {
     evalFile(path: string): any;
 }
 
+// footage
+interface _FootageProvider {
+    footage(name: Key): Footage;
+}
+
 // General
 /*
  * Global: https://ae-expressions.docsforadobe.dev/general/global/
  */
-interface Global {
+interface Global extends _FootageProvider {
     $: _HelperObject;
     colorDepth: 8 | 16 | 32;
     thisComp: Comp;
@@ -33,7 +38,6 @@ interface Global {
     time: number;
     value: _PropertyValue;
     comp(name: string): Comp;
-    footage(name: string): Footage;
     posterizeTime(updatesPerSecond: number): number;
 }
 
@@ -49,13 +53,12 @@ declare const comp: Global["comp"];
 declare const footage: Global["footage"];
 declare const posterizeTime: Global["posterizeTime"];
 
-interface Layer {
+interface Layer extends _FootageProvider{
     colorDepth: 8 | 16 | 32;
     thisComp: Comp;
     thisProject: Project;
     time: number;
     comp(name: string): Comp;
-    footage(name: string): Footage;
     posterizeTime(updatesPerSecond: number): number;
 }
 
@@ -349,7 +352,7 @@ declare class Mask {
 declare class Property<Value extends _PropertyValue = _PropertyValue> {
     name: string;
     numKeys: number;
-    propertyIndex: string;
+    propertyIndex: number;
     speed: string;
     value: Value;
     velocity: _NumericND;

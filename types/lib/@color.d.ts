@@ -1,6 +1,8 @@
-interface Global extends Atarabi.Color.FootageProvider { }
-
-interface Layer extends Atarabi.Color.FootageProvider { }
+interface _FootageProvider {
+    footage(name: "@color.jsx"): Footage<{
+        load(force?: boolean): Atarabi.Color.Lib;
+    }>;
+}
 
 declare namespace Atarabi {
 
@@ -13,12 +15,6 @@ declare namespace Atarabi {
     }
 
     namespace Color {
-
-        interface FootageProvider {
-            footage(name: "@color.jsx"): Footage<{
-                load(force?: boolean): Lib;
-            }>;
-        }
 
         interface Lib {
             keyframeProgress: typeof keyframeProgress;
