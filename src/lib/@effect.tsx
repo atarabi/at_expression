@@ -21,26 +21,27 @@
         } as const;
 
         // effect
-        function create(settings: Atarabi.Effect.EffectSettings) {
+        function create(name: string, matchName?: string, parameters?: { [name: string]: { value?: any; expression?: string; } }) {
             let effect: Effect = null;
             try {
-                effect = thisLayer.effect(settings.name);
+                effect = thisLayer.effect(name);
             } catch (e) {
-                if (settings == null) {
-                    throw new Error(MSG.TYPE_MISMATCH("settings", "{matchName: string; name: string;}", settings));
+                if (typeof name !== "string") {
+                    throw new Error(MSG.TYPE_MISMATCH("name", EXPECTED.STRING, name));
                 }
-                if (typeof settings.name !== "string") {
-                    throw new Error(MSG.TYPE_MISMATCH("name", EXPECTED.STRING, settings.name));
-                }
-                if (typeof settings.matchName !== "string") {
-                    throw new Error(MSG.TYPE_MISMATCH("matchName", EXPECTED.STRING, settings.matchName));
+                if (matchName != null && typeof matchName !== "string") {
+                    throw new Error(MSG.TYPE_MISMATCH("matchName", EXPECTED.STRING, matchName));
                 }
 
                 throw JSON.stringify({
                     namespace: "@expression",
                     scope: "@effect",
                     action: "createEffect",
-                    payload: settings,
+                    payload: {
+                        name,
+                        matchName: matchName ?? name,
+                        ...(parameters != null && { parameters }),
+                    },
                 } satisfies Atarabi.Effect.CreateEffectAction);
             }
             return effect;
@@ -50,36 +51,32 @@
         function ExpressionControl(settings: Atarabi.Effect.ExpressionControlSettings): Property {
             switch (settings.type) {
                 case "3D Point":
-                    return ThreeDPoint(settings);
+                    return ThreeDPoint(settings.name, settings.value, settings.expression);
                 case "Angle":
-                    return Angle(settings);
+                    return Angle(settings.name, settings.value, settings.expression);
                 case "Checkbox":
-                    return Checkbox(settings);
+                    return Checkbox(settings.name, settings.value, settings.expression);
                 case "Color":
-                    return Color(settings);
+                    return Color(settings.name, settings.value, settings.expression);
                 case "Dropdown Menu":
-                    return DropdownMenu(settings);
+                    return DropdownMenu(settings.name, settings.items, settings.value, settings.expression);
                 case "Layer":
-                    return Layer(settings);
+                    return Layer(settings.name);
                 case "Point":
-                    return Point(settings);
+                    return Point(settings.name, settings.value, settings.expression);
                 case "Slider":
-                    return Slider(settings);
+                    return Slider(settings.name, settings.value, settings.expression);
             }
 
             throw new Error(`Invalid type: ${(settings as any).type}`);
         }
 
-        function hasOwn(obj: any, key: string) {
-            return Object.prototype.hasOwnProperty.call(obj, key);
+        function checkName(name: string) {
+            if (typeof name !== "string") throw new Error(MSG.TYPE_MISMATCH("name", EXPECTED.STRING, name));
         }
 
-        function checkName(settings: { name: string }) {
-            if (typeof settings.name !== "string") throw new Error(MSG.TYPE_MISMATCH("name", EXPECTED.STRING, settings.name));
-        }
-
-        function checkExpression(settings: { expression?: string }) {
-            if (hasOwn(settings, "expression") && typeof settings.expression !== "string") throw new Error(MSG.TYPE_MISMATCH("expression", EXPECTED.STRING, settings.expression));
+        function checkExpression(expression?: string) {
+            if (expression != null && typeof expression !== "string") throw new Error(MSG.TYPE_MISMATCH("expression", EXPECTED.STRING, expression));
         }
 
         function getExpressionControl(settings: Atarabi.Effect.ExpressionControlSettings) {
@@ -97,92 +94,128 @@
             return effect;
         }
 
-        function ThreeDPoint(settings: Omit<Atarabi.Effect.ThreeDPointSettings, "type">): Property {
-            checkName(settings);
-            checkExpression(settings);
-            if (hasOwn(settings, "value")) {
-                const v = settings.value;
-                if (!(Array.isArray(v) && v.length === 3 && typeof v[0] === "number" && typeof v[1] === "number" && typeof v[2] === "number")) {
-                    throw new Error(MSG.TYPE_MISMATCH("value", EXPECTED.THREE_D, settings.value));
+        function ThreeDPoint(name: string, value?: [x: number, y: number, z: number], expression?: string): Property {
+            checkName(name);
+            checkExpression(expression);
+            if (value != null) {
+                if (!(Array.isArray(value) && value.length === 3 && typeof value[0] === "number" && typeof value[1] === "number" && typeof value[2] === "number")) {
+                    throw new Error(MSG.TYPE_MISMATCH("value", EXPECTED.THREE_D, value));
                 }
             }
-            return getExpressionControl({ type: "3D Point", ...settings })(1);
+            return getExpressionControl({
+                type: "3D Point",
+                name,
+                ...(value != null && { value }),
+                ...(expression != null && { expression }),
+            })(1);
         }
 
-        function Angle(settings: Omit<Atarabi.Effect.AngleSettings, "type">): Property {
-            checkName(settings);
-            checkExpression(settings);
-            if (hasOwn(settings, "value")) {
-                if (typeof settings.value !== "number") {
-                    throw new Error(MSG.TYPE_MISMATCH("value", EXPECTED.NUMBER, settings.value));
+        function Angle(name: string, value?: number, expression?: string): Property {
+            checkName(name);
+            checkExpression(expression);
+            if (value != null) {
+                if (typeof value !== "number") {
+                    throw new Error(MSG.TYPE_MISMATCH("value", EXPECTED.NUMBER, value));
                 }
             }
-            return getExpressionControl({ type: "Angle", ...settings })(1);
+            return getExpressionControl({
+                type: "Angle",
+                name,
+                ...(value != null && { value }),
+                ...(expression != null && { expression }),
+            })(1);
         }
 
-        function Checkbox(settings: Omit<Atarabi.Effect.CheckboxSettings, "type">): Property {
-            checkName(settings);
-            checkExpression(settings);
-            if (hasOwn(settings, "value")) {
-                if (!(typeof settings.value === "number" || typeof settings.value === "boolean")) {
-                    throw new Error(MSG.TYPE_MISMATCH("value", 'a boolean (true/false) or number (0/1)', settings.value));
+        function Checkbox(name: string, value?: boolean | number, expression?: string): Property {
+            checkName(name);
+            checkExpression(expression);
+            if (value != null) {
+                if (!(typeof value === "number" || typeof value === "boolean")) {
+                    throw new Error(MSG.TYPE_MISMATCH("value", 'a boolean (true/false) or number (0/1)', value));
                 }
             }
-            return getExpressionControl({ type: "Checkbox", ...settings })(1);
+            return getExpressionControl({
+                type: "Checkbox",
+                name,
+                ...(value != null && { value }),
+                ...(expression != null && { expression }),
+            })(1);
         }
 
-        function Color(settings: Omit<Atarabi.Effect.ColorSettings, "type">): Property {
-            checkName(settings);
-            checkExpression(settings);
-            if (hasOwn(settings, "value")) {
-                const v = settings.value;
-                if (!(Array.isArray(v) && v.length === 4 && typeof v[0] === "number" && typeof v[1] === "number" && typeof v[2] === "number" && typeof v[3] === "number")) {
-                    throw new Error(MSG.TYPE_MISMATCH("value", EXPECTED.COLOR, settings.value));
+        function Color(name: string, value?: [red: number, green: number, blue: number, alpha: number], expression?: string): Property {
+            checkName(name);
+            checkExpression(expression);
+            if (value != null) {
+                if (!(Array.isArray(value) && value.length === 4 && typeof value[0] === "number" && typeof value[1] === "number" && typeof value[2] === "number" && typeof value[3] === "number")) {
+                    throw new Error(MSG.TYPE_MISMATCH("value", EXPECTED.COLOR, value));
                 }
             }
-            return getExpressionControl({ type: "Color", ...settings })(1);
+            return getExpressionControl({
+                type: "Color",
+                name,
+                ...(value != null && { value }),
+                ...(expression != null && { expression }),
+            })(1);
         }
 
-        function DropdownMenu(settings: Omit<Atarabi.Effect.DropdownMenuSettings, "type">): Property {
-            checkName(settings);
-            checkExpression(settings);
-            if (!(Array.isArray(settings.items) && settings.items.every(item => typeof item === 'string'))) {
-                throw new Error(MSG.TYPE_MISMATCH("items", `a string array string[]`, settings.items));
+        function DropdownMenu(name: string, items: string[], value?: number, expression?: string): Property {
+            checkName(name);
+            checkExpression(expression);
+            if (!(Array.isArray(items) && items.every(item => typeof item === 'string'))) {
+                throw new Error(MSG.TYPE_MISMATCH("items", `a string array string[]`, items));
             }
-            if (hasOwn(settings, "value")) {
-                if (typeof settings.value !== "number") {
-                    throw new Error(MSG.TYPE_MISMATCH("value", EXPECTED.NUMBER, settings.value));
+            if (value != null) {
+                if (typeof value !== "number") {
+                    throw new Error(MSG.TYPE_MISMATCH("value", EXPECTED.NUMBER, value));
                 }
             }
-            return getExpressionControl({ type: "Dropdown Menu", ...settings })(1);
+            return getExpressionControl({
+                type: "Dropdown Menu",
+                name,
+                items,
+                ...(value != null && { value }),
+                ...(expression != null && { expression }),
+            })(1);
         }
 
-        function Layer(settings: Omit<Atarabi.Effect.LayerSettings, "type">): Property {
-            checkName(settings);
-            return null;
+        function Layer(name: string): Property {
+            checkName(name);
+            return getExpressionControl({
+                type: "Layer",
+                name,
+            })(1);
         }
 
-        function Point(settings: Omit<Atarabi.Effect.PointSettings, "type">): Property {
-            checkName(settings);
-            checkExpression(settings);
-            if (hasOwn(settings, "value")) {
-                const v = settings.value;
-                if (!(Array.isArray(v) && v.length === 2 && typeof v[0] === "number" && typeof v[1] === "number")) {
-                    throw new Error(MSG.TYPE_MISMATCH("value", EXPECTED.THREE_D, settings.value));
+        function Point(name: string, value?: [number, number], expression?: string): Property {
+            checkName(name);
+            checkExpression(expression);
+            if (value != null) {
+                if (!(Array.isArray(value) && value.length === 2 && typeof value[0] === "number" && typeof value[1] === "number")) {
+                    throw new Error(MSG.TYPE_MISMATCH("value", EXPECTED.TWO_D, value));
                 }
             }
-            return getExpressionControl({ type: "Point", ...settings })(1);
+            return getExpressionControl({
+                type: "Point",
+                name,
+                ...(value != null && { value }),
+                ...(expression != null && { expression }),
+            })(1);
         }
 
-        function Slider(settings: Omit<Atarabi.Effect.SliderSettings, "type">): Property {
-            checkName(settings);
-            checkExpression(settings);
-            if (hasOwn(settings, "value")) {
-                if (typeof settings.value !== "number") {
-                    throw new Error(MSG.TYPE_MISMATCH("value", EXPECTED.NUMBER, settings.value));
+        function Slider(name: string, value?: number, expression?: string): Property {
+            checkName(name);
+            checkExpression(expression);
+            if (value != null) {
+                if (typeof value !== "number") {
+                    throw new Error(MSG.TYPE_MISMATCH("value", EXPECTED.NUMBER, value));
                 }
             }
-            return getExpressionControl({ type: "Slider", ...settings })(1);
+            return getExpressionControl({
+                type: "Slider",
+                name,
+                ...(value != null && { value }),
+                ...(expression != null && { expression }),
+            })(1);
         }
 
         // pseudo

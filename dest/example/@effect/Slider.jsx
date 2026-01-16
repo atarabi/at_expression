@@ -1,3 +1,3 @@
 const Effect = footage("@effect.jsx").sourceData.load();
-const slider = Effect.Slider({ name: "Scale", value: 200 });
+const slider = Effect.Slider("Scale", 200);
 slider.value;

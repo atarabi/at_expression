@@ -18,17 +18,17 @@ declare namespace Atarabi {
     namespace Effect {
 
         interface Lib {
-            create(settings: EffectSettings): Effect;
+            create(name: string, matchName?: string, parameters?: { [name: string]: { value?: any; expression?: string; } }): Effect;
             // expression control
             ExpressionControl(settings: ExpressionControlSettings): Property;
-            ThreeDPoint(settings: Omit<ThreeDPointSettings, "type">): Property;
-            Angle(settings: Omit<AngleSettings, "type">): Property;
-            Checkbox(settings: Omit<CheckboxSettings, "type">): Property;
-            Color(settings: Omit<ColorSettings, "type">): Property;
-            DropdownMenu(settings: Omit<DropdownMenuSettings, "type">): Property;
-            Layer(settings: Omit<LayerSettings, "type">): Property;
-            Point(settings: Omit<PointSettings, "type">): Property;
-            Slider(settings: Omit<SliderSettings, "type">): Property;
+            ThreeDPoint(name: string, value?: [x: number, y: number, z: number], expression?: string): Property;
+            Angle(name: string, value?: number, expression?: string): Property;
+            Checkbox(name: string, value?: boolean | number, expression?: string): Property;
+            Color(name: string, value?: [red: number, green: number, blue: number, alpha: number], expression?: string): Property;
+            DropdownMenu(name: string, items: string[], value?: number, expression?: string): Property;
+            Layer(name: string): Property;
+            Point(name: string, value?: [number, number], expression?: string): Property;
+            Slider(name: string, value?: number, expression?: string): Property;
             // pseudo
             Pseudo(name: string, matchName?: string): Pseudo.Builder;
         }
@@ -53,10 +53,10 @@ declare namespace Atarabi {
 
         // effect
         interface EffectSettings {
-            matchName: string;
             name: string;
+            matchName: string;
             parameters?: {
-                [matchName: string]: {
+                [name: string]: {
                     value?: any;
                     expression?: string;
                 },

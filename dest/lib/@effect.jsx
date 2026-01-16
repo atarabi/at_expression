@@ -16,26 +16,27 @@
             STRING: "a string",
         };
         // effect
-        function create(settings) {
+        function create(name, matchName, parameters) {
             let effect = null;
             try {
-                effect = thisLayer.effect(settings.name);
+                effect = thisLayer.effect(name);
             }
             catch (e) {
-                if (settings == null) {
-                    throw new Error(MSG.TYPE_MISMATCH("settings", "{matchName: string; name: string;}", settings));
+                if (typeof name !== "string") {
+                    throw new Error(MSG.TYPE_MISMATCH("name", EXPECTED.STRING, name));
                 }
-                if (typeof settings.name !== "string") {
-                    throw new Error(MSG.TYPE_MISMATCH("name", EXPECTED.STRING, settings.name));
-                }
-                if (typeof settings.matchName !== "string") {
-                    throw new Error(MSG.TYPE_MISMATCH("matchName", EXPECTED.STRING, settings.matchName));
+                if (matchName != null && typeof matchName !== "string") {
+                    throw new Error(MSG.TYPE_MISMATCH("matchName", EXPECTED.STRING, matchName));
                 }
                 throw JSON.stringify({
                     namespace: "@expression",
                     scope: "@effect",
                     action: "createEffect",
-                    payload: settings,
+                    payload: {
+                        name,
+                        matchName: matchName ?? name,
+                        ...(parameters != null && { parameters }),
+                    },
                 });
             }
             return effect;
@@ -44,34 +45,31 @@
         function ExpressionControl(settings) {
             switch (settings.type) {
                 case "3D Point":
-                    return ThreeDPoint(settings);
+                    return ThreeDPoint(settings.name, settings.value, settings.expression);
                 case "Angle":
-                    return Angle(settings);
+                    return Angle(settings.name, settings.value, settings.expression);
                 case "Checkbox":
-                    return Checkbox(settings);
+                    return Checkbox(settings.name, settings.value, settings.expression);
                 case "Color":
-                    return Color(settings);
+                    return Color(settings.name, settings.value, settings.expression);
                 case "Dropdown Menu":
-                    return DropdownMenu(settings);
+                    return DropdownMenu(settings.name, settings.items, settings.value, settings.expression);
                 case "Layer":
-                    return Layer(settings);
+                    return Layer(settings.name);
                 case "Point":
-                    return Point(settings);
+                    return Point(settings.name, settings.value, settings.expression);
                 case "Slider":
-                    return Slider(settings);
+                    return Slider(settings.name, settings.value, settings.expression);
             }
             throw new Error(`Invalid type: ${settings.type}`);
         }
-        function hasOwn(obj, key) {
-            return Object.prototype.hasOwnProperty.call(obj, key);
+        function checkName(name) {
+            if (typeof name !== "string")
+                throw new Error(MSG.TYPE_MISMATCH("name", EXPECTED.STRING, name));
         }
-        function checkName(settings) {
-            if (typeof settings.name !== "string")
-                throw new Error(MSG.TYPE_MISMATCH("name", EXPECTED.STRING, settings.name));
-        }
-        function checkExpression(settings) {
-            if (hasOwn(settings, "expression") && typeof settings.expression !== "string")
-                throw new Error(MSG.TYPE_MISMATCH("expression", EXPECTED.STRING, settings.expression));
+        function checkExpression(expression) {
+            if (expression != null && typeof expression !== "string")
+                throw new Error(MSG.TYPE_MISMATCH("expression", EXPECTED.STRING, expression));
         }
         function getExpressionControl(settings) {
             let effect = null;
@@ -88,85 +86,121 @@
             }
             return effect;
         }
-        function ThreeDPoint(settings) {
-            checkName(settings);
-            checkExpression(settings);
-            if (hasOwn(settings, "value")) {
-                const v = settings.value;
-                if (!(Array.isArray(v) && v.length === 3 && typeof v[0] === "number" && typeof v[1] === "number" && typeof v[2] === "number")) {
-                    throw new Error(MSG.TYPE_MISMATCH("value", EXPECTED.THREE_D, settings.value));
+        function ThreeDPoint(name, value, expression) {
+            checkName(name);
+            checkExpression(expression);
+            if (value != null) {
+                if (!(Array.isArray(value) && value.length === 3 && typeof value[0] === "number" && typeof value[1] === "number" && typeof value[2] === "number")) {
+                    throw new Error(MSG.TYPE_MISMATCH("value", EXPECTED.THREE_D, value));
                 }
             }
-            return getExpressionControl({ type: "3D Point", ...settings })(1);
+            return getExpressionControl({
+                type: "3D Point",
+                name,
+                ...(value != null && { value }),
+                ...(expression != null && { expression }),
+            })(1);
         }
-        function Angle(settings) {
-            checkName(settings);
-            checkExpression(settings);
-            if (hasOwn(settings, "value")) {
-                if (typeof settings.value !== "number") {
-                    throw new Error(MSG.TYPE_MISMATCH("value", EXPECTED.NUMBER, settings.value));
+        function Angle(name, value, expression) {
+            checkName(name);
+            checkExpression(expression);
+            if (value != null) {
+                if (typeof value !== "number") {
+                    throw new Error(MSG.TYPE_MISMATCH("value", EXPECTED.NUMBER, value));
                 }
             }
-            return getExpressionControl({ type: "Angle", ...settings })(1);
+            return getExpressionControl({
+                type: "Angle",
+                name,
+                ...(value != null && { value }),
+                ...(expression != null && { expression }),
+            })(1);
         }
-        function Checkbox(settings) {
-            checkName(settings);
-            checkExpression(settings);
-            if (hasOwn(settings, "value")) {
-                if (!(typeof settings.value === "number" || typeof settings.value === "boolean")) {
-                    throw new Error(MSG.TYPE_MISMATCH("value", 'a boolean (true/false) or number (0/1)', settings.value));
+        function Checkbox(name, value, expression) {
+            checkName(name);
+            checkExpression(expression);
+            if (value != null) {
+                if (!(typeof value === "number" || typeof value === "boolean")) {
+                    throw new Error(MSG.TYPE_MISMATCH("value", 'a boolean (true/false) or number (0/1)', value));
                 }
             }
-            return getExpressionControl({ type: "Checkbox", ...settings })(1);
+            return getExpressionControl({
+                type: "Checkbox",
+                name,
+                ...(value != null && { value }),
+                ...(expression != null && { expression }),
+            })(1);
         }
-        function Color(settings) {
-            checkName(settings);
-            checkExpression(settings);
-            if (hasOwn(settings, "value")) {
-                const v = settings.value;
-                if (!(Array.isArray(v) && v.length === 4 && typeof v[0] === "number" && typeof v[1] === "number" && typeof v[2] === "number" && typeof v[3] === "number")) {
-                    throw new Error(MSG.TYPE_MISMATCH("value", EXPECTED.COLOR, settings.value));
+        function Color(name, value, expression) {
+            checkName(name);
+            checkExpression(expression);
+            if (value != null) {
+                if (!(Array.isArray(value) && value.length === 4 && typeof value[0] === "number" && typeof value[1] === "number" && typeof value[2] === "number" && typeof value[3] === "number")) {
+                    throw new Error(MSG.TYPE_MISMATCH("value", EXPECTED.COLOR, value));
                 }
             }
-            return getExpressionControl({ type: "Color", ...settings })(1);
+            return getExpressionControl({
+                type: "Color",
+                name,
+                ...(value != null && { value }),
+                ...(expression != null && { expression }),
+            })(1);
         }
-        function DropdownMenu(settings) {
-            checkName(settings);
-            checkExpression(settings);
-            if (!(Array.isArray(settings.items) && settings.items.every(item => typeof item === 'string'))) {
-                throw new Error(MSG.TYPE_MISMATCH("items", `a string array string[]`, settings.items));
+        function DropdownMenu(name, items, value, expression) {
+            checkName(name);
+            checkExpression(expression);
+            if (!(Array.isArray(items) && items.every(item => typeof item === 'string'))) {
+                throw new Error(MSG.TYPE_MISMATCH("items", `a string array string[]`, items));
             }
-            if (hasOwn(settings, "value")) {
-                if (typeof settings.value !== "number") {
-                    throw new Error(MSG.TYPE_MISMATCH("value", EXPECTED.NUMBER, settings.value));
+            if (value != null) {
+                if (typeof value !== "number") {
+                    throw new Error(MSG.TYPE_MISMATCH("value", EXPECTED.NUMBER, value));
                 }
             }
-            return getExpressionControl({ type: "Dropdown Menu", ...settings })(1);
+            return getExpressionControl({
+                type: "Dropdown Menu",
+                name,
+                items,
+                ...(value != null && { value }),
+                ...(expression != null && { expression }),
+            })(1);
         }
-        function Layer(settings) {
-            checkName(settings);
-            return null;
+        function Layer(name) {
+            checkName(name);
+            return getExpressionControl({
+                type: "Layer",
+                name,
+            })(1);
         }
-        function Point(settings) {
-            checkName(settings);
-            checkExpression(settings);
-            if (hasOwn(settings, "value")) {
-                const v = settings.value;
-                if (!(Array.isArray(v) && v.length === 2 && typeof v[0] === "number" && typeof v[1] === "number")) {
-                    throw new Error(MSG.TYPE_MISMATCH("value", EXPECTED.THREE_D, settings.value));
+        function Point(name, value, expression) {
+            checkName(name);
+            checkExpression(expression);
+            if (value != null) {
+                if (!(Array.isArray(value) && value.length === 2 && typeof value[0] === "number" && typeof value[1] === "number")) {
+                    throw new Error(MSG.TYPE_MISMATCH("value", EXPECTED.TWO_D, value));
                 }
             }
-            return getExpressionControl({ type: "Point", ...settings })(1);
+            return getExpressionControl({
+                type: "Point",
+                name,
+                ...(value != null && { value }),
+                ...(expression != null && { expression }),
+            })(1);
         }
-        function Slider(settings) {
-            checkName(settings);
-            checkExpression(settings);
-            if (hasOwn(settings, "value")) {
-                if (typeof settings.value !== "number") {
-                    throw new Error(MSG.TYPE_MISMATCH("value", EXPECTED.NUMBER, settings.value));
+        function Slider(name, value, expression) {
+            checkName(name);
+            checkExpression(expression);
+            if (value != null) {
+                if (typeof value !== "number") {
+                    throw new Error(MSG.TYPE_MISMATCH("value", EXPECTED.NUMBER, value));
                 }
             }
-            return getExpressionControl({ type: "Slider", ...settings })(1);
+            return getExpressionControl({
+                type: "Slider",
+                name,
+                ...(value != null && { value }),
+                ...(expression != null && { expression }),
+            })(1);
         }
         // pseudo
         class Base62 {
