@@ -154,6 +154,8 @@ declare namespace Atarabi {
             [delimiter: string]: TextStyleOptions;
         }
 
+        type BracketMarkupStyle = { open: string; close: string; style: TextStyleOptions; }[];
+
         interface TagMarkupStyle {
             [tag: string]: TextStyleOptions;
         }
@@ -352,6 +354,7 @@ declare namespace Atarabi {
             // as
             asMarkdown(style: Partial<MarkdownStyle>): TextStyleContext;
             asCustomMarkup(style: CustomMarkupStyle): TextStyleContext;
+            asBracketMarkup(style: BracketMarkupStyle): TextStyleContext;
             asTagMarkup(style: TagMarkupStyle, variables?: TagMarkupVariables): TextStyleContext;
             // static
             byCharClass(options?: CharClassOptions): TextStyleContext<CharClassTextStyleBuilder>;

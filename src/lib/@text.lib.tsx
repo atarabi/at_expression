@@ -2177,8 +2177,29 @@
             }
         }
 
+        function applyUnescapeOps(text: string, baseOffset: number, outputStart: number): { ops: TransformOp[], length: number } {
+            const ops: TransformOp[] = [];
+                let outIdx = 0;
+                for (let i = 0; i < text.length; i++) {
+                    if (text[i] === '\\' && i + 1 < text.length) {
+                        ops.push({
+                            type: "move",
+                            range: { from: baseOffset + i + 1, count: 1 },
+                            to: outputStart + outIdx
+                        });
+                        i++;
+                    } else {
+                        ops.push({
+                            type: "move", range: { from: baseOffset + i, count: 1 }, to: outputStart + outIdx
+                        });
+                    }
+                    outIdx++;
+                }
+                return { ops, length: outIdx };
+        }
+
         class AsCustomMarkup implements TextStyleResolver {
-            private readonly pattern: RegExp | null = null;
+            private readonly pattern: RegExp;
             private readonly delimiters: string[];
             constructor(protected style: Atarabi.Text.CustomMarkupStyle) {
                 this.delimiters = Object.keys(style).sort((a, b) => b.length - a.length);
@@ -2201,7 +2222,7 @@
                 let lastIndex = 0;
 
                 if (!this.pattern || this.delimiters.length === 0) {
-                    return { styles: [], ...this.applyUnescapeOps(input, offset, 0) };
+                    return { styles: [], ...applyUnescapeOps(input, offset, 0) };
                 }
 
                 const savedLastIndex = this.pattern.lastIndex;
@@ -2214,7 +2235,7 @@
                     const actualTagStart = indices.delim[0];
 
                     if (actualTagStart > lastIndex) {
-                        const res = this.applyUnescapeOps(input.slice(lastIndex, actualTagStart), offset + lastIndex, currentOutputPos);
+                        const res = applyUnescapeOps(input.slice(lastIndex, actualTagStart), offset + lastIndex, currentOutputPos);
                         ops.push(...res.ops);
                         currentOutputPos += res.length;
                     }
@@ -2237,7 +2258,7 @@
                     const endTagStart = match.index + match[0].length - delim.length;
                     let postLength = 0;
                     if (endTagStart > (indices.content[1])) {
-                        const res = this.applyUnescapeOps(input.slice(indices.content[1], endTagStart), offset + indices.content[1], currentOutputPos);
+                        const res = applyUnescapeOps(input.slice(indices.content[1], endTagStart), offset + indices.content[1], currentOutputPos);
                         ops.push(...res.ops);
                         postLength = res.length;
                         currentOutputPos += postLength;
@@ -2253,7 +2274,7 @@
                 }
 
                 if (lastIndex < input.length) {
-                    const res = this.applyUnescapeOps(input.slice(lastIndex), offset + lastIndex, currentOutputPos);
+                    const res = applyUnescapeOps(input.slice(lastIndex), offset + lastIndex, currentOutputPos);
                     ops.push(...res.ops);
                     currentOutputPos += res.length;
                 }
@@ -2262,31 +2283,94 @@
 
                 return { styles: ranges, ops, length: currentOutputPos };
             }
-            private applyUnescapeOps(text: string, baseOffset: number, outputStart: number): { ops: TransformOp[], length: number } {
-                const ops: TransformOp[] = [];
-                let outIdx = 0;
-                for (let i = 0; i < text.length; i++) {
-                    if (text[i] === '\\' && i + 1 < text.length) {
-                        ops.push({
-                            type: "move",
-                            range: { from: baseOffset + i + 1, count: 1 },
-                            to: outputStart + outIdx
-                        });
-                        i++;
-                    } else {
-                        ops.push({
-                            type: "move", range: { from: baseOffset + i, count: 1 }, to: outputStart + outIdx
-                        });
-                    }
-                    outIdx++;
-                }
-                return { ops, length: outIdx };
-            }
         }
 
-        function hasAnyProperty(obj: object): boolean {
-            for (const _ in obj) return true;
-            return false;
+        class AsBracketMarkup implements TextStyleResolver {
+            private readonly pattern: RegExp;
+            constructor(protected style: Atarabi.Text.BracketMarkupStyle) {
+                if (Array.isArray(style) && this.style.length > 0) {
+                    const patterns = this.style.map((config, i) => {
+                        const escapedOpen = config.open.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+                        const escapedClose = config.close.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+                        return `(?<bracket${i}>${escapedOpen}(?<content${i}>[\\s\\S]*?)${escapedClose})`;
+                    });
+                    this.pattern = new RegExp(
+                        `(?<!\\\\)(?:\\\\\\\\)*(?:${patterns.join('|')})`,
+                        'gdm'
+                    );
+                }
+
+            }
+            resolve(text: string): StylesWithOps {
+                const { styles, ops } = this.parse(text);
+                return { pre: false, styles, ops };
+            }
+            private parse(input: string, offset: number = 0): { styles: RangeWithStyle[]; ops: TransformOp[]; length: number } {
+                const ops: TransformOp[] = [];
+                const ranges: RangeWithStyle[] = [];
+                let currentOutputPos = 0;
+                let lastIndex = 0;
+
+                if (!this.pattern || this.style.length === 0) {
+                    return { styles: [], ...applyUnescapeOps(input, offset, 0) };
+                }
+
+                const savedLastIndex = this.pattern.lastIndex;
+                this.pattern.lastIndex = 0;
+
+                let match: RegExpExecArray = null;
+                while ((match = this.pattern.exec(input)) !== null) {
+                    const groups = match.groups!;
+                    const indices = match.indices!.groups!;
+
+                    const configIndex = this.style.findIndex((_, i) => groups[`bracket${i}`] !== undefined);
+                    if (configIndex === -1) continue;
+
+                    const config = this.style[configIndex];
+                    const fullMatchStart = match.index;
+                    const content = groups[`content${configIndex}`];
+                    const contentIndices = indices[`content${configIndex}`];
+
+                    if (fullMatchStart > lastIndex) {
+                        const res = applyUnescapeOps(input.slice(lastIndex, fullMatchStart), offset + lastIndex, currentOutputPos);
+                        ops.push(...res.ops);
+                        currentOutputPos += res.length;
+                    }
+
+                    const styleStartPos = currentOutputPos;
+                    const sub = this.parse(content, offset + contentIndices[0]);
+
+                    for (const subOp of sub.ops) {
+                        ops.push(subOp.type === "move"
+                            ? { ...subOp, to: subOp.to + currentOutputPos }
+                            : { ...subOp, at: subOp.at + currentOutputPos });
+                    }
+
+                    const tempSubStyles = sub.styles.map(s => ({ ...s, from: s.from + currentOutputPos }));
+
+                    currentOutputPos += sub.length;
+
+                    if (config.style) {
+                        ranges.push({
+                            from: styleStartPos,
+                            count: sub.length,
+                            style: config.style
+                        });
+                    }
+                    ranges.push(...tempSubStyles);
+
+                    lastIndex = match.index + match[0].length;
+                }
+
+                if (lastIndex < input.length) {
+                    const res = applyUnescapeOps(input.slice(lastIndex), offset + lastIndex, currentOutputPos);
+                    ops.push(...res.ops);
+                    currentOutputPos += res.length;
+                }
+
+                this.pattern.lastIndex = savedLastIndex;
+                return { styles: ranges, ops, length: currentOutputPos };
+            }
         }
 
         function parseColor(value: string): [number, number, number] {
@@ -2327,7 +2411,7 @@
                 let match: RegExpExecArray | null = null;
                 while ((match = this.pattern.exec(input)) !== null) {
                     if (match.index > lastIndex) {
-                        const res = this.applyUnescapeOps(input.slice(lastIndex, match.index), offset + lastIndex, currentOutputPos);
+                        const res = applyUnescapeOps(input.slice(lastIndex, match.index), offset + lastIndex, currentOutputPos);
                         ops.push(...res.ops);
                         currentOutputPos += res.length;
                     }
@@ -2373,27 +2457,13 @@
                 }
 
                 if (lastIndex < input.length) {
-                    const res = this.applyUnescapeOps(input.slice(lastIndex), offset + lastIndex, currentOutputPos);
+                    const res = applyUnescapeOps(input.slice(lastIndex), offset + lastIndex, currentOutputPos);
                     ops.push(...res.ops);
                     currentOutputPos += res.length;
                 }
 
                 this.pattern.lastIndex = savedLastIndex;
                 return { styles: ranges, ops, length: currentOutputPos };
-            }
-            private applyUnescapeOps(text: string, baseOffset: number, outputStart: number) {
-                const ops: TransformOp[] = [];
-                let outIdx = 0;
-                for (let i = 0; i < text.length; i++) {
-                    if (text[i] === '\\' && i + 1 < text.length) {
-                        ops.push({ type: "move", range: { from: baseOffset + i + 1, count: 1 }, to: outputStart + outIdx });
-                        i++;
-                    } else {
-                        ops.push({ type: "move", range: { from: baseOffset + i, count: 1 }, to: outputStart + outIdx });
-                    }
-                    outIdx++;
-                }
-                return { ops, length: outIdx };
             }
             private readonly varPattern: RegExp = /^\$\{(?<varName>.+?)\}$/;
             private parseInlineStyle(key: string, value: string): boolean | string | number | number[] {
@@ -2492,6 +2562,10 @@
             }
             asCustomMarkup(style: Atarabi.Text.CustomMarkupStyle): this {
                 this.addBuilder(new AsCustomMarkup(style));
+                return this;
+            }
+            asBracketMarkup(style: Atarabi.Text.BracketMarkupStyle): this {
+                this.addBuilder(new AsBracketMarkup(style));
                 return this;
             }
             asTagMarkup(style: Atarabi.Text.TagMarkupStyle, variables: Atarabi.Text.TagMarkupVariables = {}): this {
