@@ -149,8 +149,8 @@
             }
             return result;
         }
-        function replaceText(style, text) {
-            return style.replaceText(text);
+        function setText(style, text) {
+            return style.setText(text);
         }
         const TEXT_STYLE_METHOD_MAP = {
             // layout
@@ -2386,11 +2386,11 @@
                 }
                 ranges = normalizeRanges(ranges);
                 // global
+                if (text !== original) {
+                    style = setText(style, text);
+                }
                 for (const field in this.globalStyle) {
                     style = applyTextStyleAll(text, style, field, this.globalStyle[field]);
-                }
-                if (text !== original) {
-                    style = replaceText(style, text);
                 }
                 // local
                 const len = text.length;
